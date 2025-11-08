@@ -1,1 +1,8 @@
-{}
+{
+  "profiles": {
+    "BatchFilePipelineCLI": {
+      "commandName": "Project",
+      "commandLineArgs": "-logFile TestOutput.log"
+    }
+  }
+}

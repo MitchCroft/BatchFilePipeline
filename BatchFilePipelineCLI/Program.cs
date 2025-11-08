@@ -1,7 +1,9 @@
-﻿using BatchFilePipelineCLI.Utility.ID;
+﻿using System.Collections;
+
 using DotNetEnv;
-using System.Collections;
-using System.Globalization;
+
+using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Description;
 
 namespace BatchFilePipeline
 {
@@ -10,6 +12,24 @@ namespace BatchFilePipeline
     /// </summary>
     internal class Program
     {
+        /*----------Variables----------*/
+        //CONST
+
+        /// <summary>
+        /// The character that is being looked for as a marker of a pipeline value that can be used for processing
+        /// </summary>
+        private const char ARGUMENT_MARKER = '-';
+
+        /// <summary>
+        /// Marker that will be used to define the file that log information should be output to for testing
+        /// </summary>
+        private const string LOG_FILE_OUTPUT_MARKER = "logFile";
+
+        /// <summary>
+        /// The argument value that is being looked for to determine the pipeline description that is to be run
+        /// </summary>
+        private const string PIPELINE_ARGUMENT_MARKER = "pipeline";
+
         /*----------Functions----------*/
         //PRIVATE
 
@@ -28,58 +48,81 @@ namespace BatchFilePipeline
                 e.Cancel = true;
             };
 
-            int index = 0;
-            var environmentVariables = LoadEnvironmentVariables(args);
-            Console.WriteLine(string.Join(Environment.NewLine, environmentVariables.Select(x => $"{index++}\t{x.Key}={x.Value}")));
-            return 0;
-
-            // Testing
-            
-            Console.Write("How big a chunk (MB)?: ");
-            string? chunkSizeString = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(chunkSizeString))
+            // We can have a general catch all in case something goes wrong
+            try
             {
-                Console.WriteLine("ERROR: Empty chunk size");
-                return -1;
-            }
-            if (int.TryParse(chunkSizeString, CultureInfo.InvariantCulture, out int chunkSize) == false)
-            {
-                Console.WriteLine($"ERROR: Received chunk size '{chunkSizeString}' couldn't be parsed");
-                return -1;
-            }
+                // Parse the arguments into the different elements that will be needed for testing
+                var argumentVariables = ParseArgumentVariables(args);
 
-            string? input = string.Empty;
-            while (cancellationTokenSource.IsCancellationRequested == false)
-            {
-                Console.Write("Enter filepath: ");
-                input = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(input) == true)
+                // Check if we need to route logs to a file for persistence as well
+                if (argumentVariables.TryGetValue(LOG_FILE_OUTPUT_MARKER, out var logFileOutput) &&
+                    string.IsNullOrWhiteSpace(logFileOutput) == false)
                 {
-                    continue;
+                    Logger.AddLogger(new FileLogOutput(logFileOutput));
                 }
 
-                var fingerprint = await FingerprintFactory.FingerprintAsync(input, chunkSize, cancellationTokenSource.Token);
-                Console.WriteLine($"Fingerprint: {fingerprint}");
+                // How this program is going to operate will depend on the operation marker that is specified
+                if (argumentVariables.TryGetValue(PIPELINE_ARGUMENT_MARKER, out var pipelinePath) == true &&
+                    string.IsNullOrWhiteSpace(pipelinePath) == false)
+                {
+                    return await ProcessPipelineAsync(pipelinePath, argumentVariables, cancellationTokenSource.Token);
+                }
+
+                // TODO: Other operation markers can be defined
+
+                // If we made it to here, we couldn't find an operation marker for use
+                else
+                {
+                    Logger.Error($"Failed to find an operation marker in the command line arguments, please specify one");
+                    return -1;
+                }
             }
+
+            // If anything goes wrong, that's a problem
+            catch (Exception ex)
+            {
+                Logger.Exception("Un unexpected exception occurred when processing data", ex);
+                return ex.HResult;
+            }
+        }
+
+        /// <summary>
+        /// Handle the process of actioning a pipeline that has been assigned to the program for use
+        /// </summary>
+        /// <param name="pipelinePath">The path to the pipeline asset that is to be parsed and executed</param>
+        /// <param name="argumentVariables">The collection of argument variables that were passed to the program</param>
+        /// <param name="cancellationToken">Cancellation token for the process that is to be respected</param>
+        /// <returns>Returns the exit code for the running process</returns>
+        private static async Task<int> ProcessPipelineAsync(string pipelinePath, Dictionary<string, string?> argumentVariables, CancellationToken cancellationToken)
+        {
+            // Try to read the pipeline file that is to be processed for testing
+            if (PipelineDescription.TryOpen(pipelinePath, out var pipelineDescription) == false)
+            {
+                Logger.Error($"Failed to open the pipeline file '{pipelineDescription}' for processing");
+                return -1;
+            }
+
+            // Read in the environment variables that can be used for executing the workflow
+            var environmentVariables = LoadEnvironmentVariables();
+
+            // TODO: Try to parse the description into a working pipeline
+
+            // If we got this far, we're good
             return 0;
         }
 
         /// <summary>
-        /// Find all of the environment variables that have been defined for use on this run through of the program
+        /// Retrieve all of the environment variables that are defined for operation
         /// </summary>
-        /// <param name="args">The command line arguments that were supplied to this program initially</param>
-        /// <returns>Returns the complete collection of environment variables that are available for use</returns>
-        private static Dictionary<string, string> LoadEnvironmentVariables(string[] args)
+        /// <returns>Returns the collection of environment variables that are to be processed</returns>
+        private static Dictionary<string, string?> LoadEnvironmentVariables()
         {
             // Load any external .env file definitions that are needed for processing
             Env.Load();
 
             // Retrieve all of the environment variable values for processing
             var availableValues = Environment.GetEnvironmentVariables();
-
-            // Stage 1. Load all of the environment variables that are defined
-            Dictionary<string, string?> environmentValues = new(availableValues.Count + args.Length / 2);
+            Dictionary<string, string?> environmentValues = new(availableValues.Count);
             foreach (DictionaryEntry entry in availableValues)
             {
                 // Skip any null values
@@ -90,15 +133,23 @@ namespace BatchFilePipeline
                 }
                 environmentValues[key] = entry.Value?.ToString();
             }
+            return environmentValues;
+        }
 
-            // Stage 2. Load the command line arguments as options that can be used
-            const char ENV_MARKER_CHAR = '-';
+        /// <summary>
+        /// Parse the command line arguments into a collection that can be processed
+        /// </summary>
+        /// <param name="args">The collection of arguments that were supplied to the program for processing</param>
+        /// <returns>Returns the collection of variables that will be used for processing</returns>
+        private static Dictionary<string, string?> ParseArgumentVariables(string[] args)
+        {
+            Dictionary<string, string?> argumentVariables = new(args.Length);
             for (int i = 0; i < args.Length; ++i)
             {
                 // The argument should begin with the '-' marker character for use
-                if (args[i].StartsWith(ENV_MARKER_CHAR) == false)
+                if (args[i].StartsWith(ARGUMENT_MARKER) == false)
                 {
-                    Console.Error.WriteLine($"[BFPCLI] Unexpected command line argument '{args[i]}'");
+                    Logger.Error($"Unexpected command line argument '{args[i]}'");
                     continue;
                 }
 
@@ -106,17 +157,17 @@ namespace BatchFilePipeline
                 string key = args[i].Substring(1);
 
                 // If the next value is marker or if this is the last, then we just use this as a flag
-                if (i == args.Length - 1 || args[i + 1].StartsWith(ENV_MARKER_CHAR) == true)
+                if (i == args.Length - 1 || args[i + 1].StartsWith(ARGUMENT_MARKER) == true)
                 {
-                    environmentValues[key] = true.ToString();
+                    argumentVariables[key] = true.ToString();
                     continue;
                 }
 
                 // Whatever value is next in the argument list is assigned to this key
                 ++i;
-                environmentValues[key] = args[i];
+                argumentVariables[key] = args[i];
             }
-            return environmentValues;
+            return argumentVariables;
         }
     }
 }
