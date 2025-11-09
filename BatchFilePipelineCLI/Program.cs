@@ -4,8 +4,9 @@ using DotNetEnv;
 
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
+using BatchFilePipelineCLI.Utility.Preserve;
 
-namespace BatchFilePipeline
+namespace BatchFilePipelineCLI
 {
     /// <summary>
     /// Handle the program entry for the CLI processing pipeline
@@ -45,6 +46,9 @@ namespace BatchFilePipeline
         /// <returns>Returns the error code that resulted from the programs operation</returns>
         private static async Task<int> Main(string[] args)
         {
+            // Ensure all the reflection types are marked as used
+            TypePreserver.Init();
+
             // This program will needs to be able to be closed when required
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
             Console.CancelKeyPress += (s, e) =>
