@@ -11,4 +11,8 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Pipeline\Attributes\" />
+  </ItemGroup>
+
 </Project>
