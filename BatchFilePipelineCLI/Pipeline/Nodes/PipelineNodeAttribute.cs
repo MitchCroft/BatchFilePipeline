@@ -14,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         /// <summary>
         /// A unique identifier for the type of the attached node that can be used to identify the required type in a workflow description
         /// </summary>
-        public string ID { get; private set; }
+        public string TypeID { get; private set; }
 
         /// <summary>
         /// Flags the location where the attached node is able to be used in a workflow
@@ -32,16 +32,16 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         /// <summary>
         /// Create the node attribute with the information required to process the usage within a pipeline
         /// </summary>
-        /// <param name="id">A unique identifier for the type of the attached node that can be used to identify the required type in a workflow description</param>
+        /// <param name="typeId">A unique identifier for the type of the attached node that can be used to identify the required type in a workflow description</param>
         /// <param name="usageFlags">Flags the location where the attached node is able to be used in a workflow</param>
         /// <exception cref="ArgumentNullException">Thrown if the type value is not specified with a real value</exception>
-        public PipelineNodeAttribute(string id, NodeUsage usageFlags)
+        public PipelineNodeAttribute(string typeId, NodeUsage usageFlags)
         {
-            if (string.IsNullOrWhiteSpace(id) == true)
+            if (string.IsNullOrWhiteSpace(typeId) == true)
             {
-                throw new ArgumentNullException(nameof(id));
+                throw new ArgumentNullException(nameof(typeId));
             }
-            ID = id;
+            TypeID = typeId;
             UsageFlags = usageFlags;
         }
     }

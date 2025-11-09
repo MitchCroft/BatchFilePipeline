@@ -19,19 +19,19 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         private readonly Type _targetNodeType = typeof(IPipelineNode);
 
         /// <summary>
-        /// Cache the <see cref="IPipelineNode"/> types that can be used based on the <see cref="PipelineNodeAttribute.ID"/>
+        /// Cache the <see cref="IPipelineNode"/> types that can be used based on the <see cref="PipelineNodeAttribute.TypeID"/>
         /// </summary>
-        private readonly Dictionary<string, Type> _nodeLookup = new();
+        private readonly Dictionary<string/*TypeID*/, Type> _nodeLookup = new();
 
         /// <summary>
         /// Store the attribute that is associated with each Node to know how they should be processed
         /// </summary>
-        private readonly Dictionary<string, PipelineNodeAttribute> _nodeCharacteristics = new();
+        private readonly Dictionary<string/*TypeID*/, PipelineNodeAttribute> _nodeCharacteristics = new();
 
         /// <summary>
         /// Store the instances of the shared pipeline nodes that can be used for processing
         /// </summary>
-        private readonly Dictionary<string, IPipelineNode> _sharedNodes = new();
+        private readonly Dictionary<string/*TypeID*/, IPipelineNode> _sharedNodes = new();
 
         /*----------Functions----------*/
         //PUBLIC
@@ -96,16 +96,16 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
                 }
 
                 // Check that we don't clash with an existing use of the ID
-                if (_nodeLookup.TryGetValue(characteristic.ID, out var existingType) == true)
+                if (_nodeLookup.TryGetValue(characteristic.TypeID, out var existingType) == true)
                 {
-                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. The assigned ID '{characteristic.ID}' is already in use by '{existingType}'");
+                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. The assigned ID '{characteristic.TypeID}' is already in use by '{existingType}'");
                     success = false;
                     continue;
                 }
 
                 // Store the values for later use
-                _nodeLookup[characteristic.ID] = type;
-                _nodeCharacteristics[characteristic.ID] = characteristic;
+                _nodeLookup[characteristic.TypeID] = type;
+                _nodeCharacteristics[characteristic.TypeID] = characteristic;
             }
             return success;
         }
@@ -113,22 +113,22 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         /// <summary>
         /// Try to get an instance of the Node with the specified type
         /// </summary>
-        /// <param name="id">The unique ID of the Node that is to be retrieved</param>
+        /// <param name="typeId">The unique ID of the Node that is to be retrieved</param>
         /// <param name="node">Passes out the instance of the node to be used if a matching one of the node could be found</param>
         /// <returns>Returns true if an instance of the Node of the specified type could be found, false if no Node with that ID is contained</returns>
-        public bool TryGetInstanceOfNode(string id, [NotNullWhen(true)] out IPipelineNode? node)
+        public bool TryGetInstanceOfNode(string typeId, [NotNullWhen(true)] out IPipelineNode? node)
         {
             // Check if we have a node for the type
-            if (_nodeLookup.TryGetValue(id, out var nodeType) == false)
+            if (_nodeLookup.TryGetValue(typeId, out var nodeType) == false)
             {
                 node = null;
                 return false;
             }
 
             // If this is a shared element, then we can check the cache
-            bool isShared = _nodeCharacteristics[id].IsShared;
+            bool isShared = _nodeCharacteristics[typeId].IsShared;
             if (isShared == true &&
-                _sharedNodes.TryGetValue(id, out node) == true)
+                _sharedNodes.TryGetValue(typeId, out node) == true)
             {
                 return true;
             }
@@ -139,7 +139,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
             // If this is shared, we can store it for later use
             if (isShared == true)
             {
-                _sharedNodes[id] = node;
+                _sharedNodes[typeId] = node;
             }
             return true;
         }

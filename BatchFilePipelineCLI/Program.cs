@@ -6,6 +6,7 @@ using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 
 namespace BatchFilePipelineCLI
 {
@@ -127,9 +128,37 @@ namespace BatchFilePipelineCLI
                 Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
                 return -1;
             }
-            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.ID).Select(x => $"{x.nodeType.FullName}\n\t\tID={x.characteristics.ID}\n\t\tUsage Flags={x.characteristics.UsageFlags}\n\t\tIs Shared={x.characteristics.IsShared}"))}");
+            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.TypeID).Select(x => $"{x.nodeType.FullName}\n\t\tID={x.characteristics.TypeID}\n\t\tUsage Flags={x.characteristics.UsageFlags}\n\t\tIs Shared={x.characteristics.IsShared}"))}");
 
-            // TODO: Try to parse the description into a working pipeline
+            // Create the graphs that will be used to process the required operations
+            PreProcessSupportGraph preProcess = new PreProcessSupportGraph();
+            MainProcessGraph mainProcess = new MainProcessGraph();
+            PostProcessSupportGraph postProcess = new PostProcessSupportGraph();
+
+            // Attempt to load the different workflows for use
+            bool loadedProcess = true;
+            if (preProcess.TryInitialiseGraph(pipelineDescription.Workflow.PreProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            {
+                Logger.Error($"Failed to load the pre-process graph for the pipeline '{pipelineDescription.Name}'");
+                loadedProcess = false;
+            }
+            if (mainProcess.TryInitialiseGraph(pipelineDescription.Workflow.ProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            {
+                Logger.Error($"Failed to load the main process graph for the pipeline '{pipelineDescription.Name}'");
+                loadedProcess = false;
+            }
+            if (postProcess.TryInitialiseGraph(pipelineDescription.Workflow.PostProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            {
+                Logger.Error($"Failed to load the post-process graph for the pipeline '{pipelineDescription.Name}'");
+                loadedProcess = false;
+            }
+            if (loadedProcess == false)
+            {
+                return -1;
+            }
+
+            // We made it this far, we can try to run the graphs
+            // TODO:
 
             // If we got this far, we're good
             return 0;

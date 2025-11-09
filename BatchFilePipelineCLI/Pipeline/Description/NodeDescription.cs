@@ -34,8 +34,8 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <remarks>
         /// Each type of node that can be used will have a unique ID that can be used to create specifics
         /// </remarks>
-        [XmlAttribute("Type")]
-        public string? Type { get; set; } = null;
+        [XmlAttribute("TypeID")]
+        public string? TypeID { get; set; } = null;
 
         /// <summary>
         /// The collection of input values that are to be retrieved for the node to process
