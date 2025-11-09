@@ -27,7 +27,7 @@ namespace BatchFilePipelineCLI.Utility.Preserve
             foreach (var type in AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()))
             {
                 // Check the type has the attribute attached
-                if (type.GetCustomAttribute<PreserveAttribute>(inherit: true) is null)
+                if (type.GetCustomAttribute<PreserveAttribute>(inherit: false) is null)
                 {
                     continue;
                 }

@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pipeline\Attributes\" />
+    <Folder Include="Pipeline\Workflow\" />
   </ItemGroup>
 
 </Project>

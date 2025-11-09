@@ -3,6 +3,6 @@
     /// <summary>
     /// An attribute that can be used to mark types as required for operation
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
     public class PreserveAttribute : Attribute {}
 }

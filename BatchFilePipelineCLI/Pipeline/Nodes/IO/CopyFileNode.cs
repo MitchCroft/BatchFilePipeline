@@ -1,6 +1,4 @@
-﻿using BatchFilePipelineCLI.Pipeline.Nodes;
-
-namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
+﻿namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
 {
     /// <summary>
     /// Define a Node that can be used to copy a file from one location to another

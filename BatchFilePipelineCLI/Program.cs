@@ -5,6 +5,7 @@ using DotNetEnv;
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 
 namespace BatchFilePipelineCLI
 {
@@ -62,26 +63,10 @@ namespace BatchFilePipelineCLI
             {
                 // Parse the arguments into the different elements that will be needed for testing
                 var argumentVariables = ParseArgumentVariables(args);
+                ParseLoggerArguments(argumentVariables);
 
-                // Check for initial log markers that may be needed
-                if (argumentVariables.TryGetValue(LOG_FILE_OUTPUT_MARKER, out var logFileOutput) &&
-                    string.IsNullOrWhiteSpace(logFileOutput) == false)
-                {
-                    Logger.AddLogger(new FileLogOutput(logFileOutput));
-                }
-                if (argumentVariables.TryGetValue(LOG_TYPE_MARKER, out var logTypeEntry))
-                {
-                    // We need to check if the type is valid for use
-                    if (Enum.TryParse<LogType>(logTypeEntry, out var logType) == true)
-                    {
-                        Logger.Log($"Adjusting log level to '{logType}'");
-                        Logger.LogLevel = logType;
-                    }
-                    else
-                    {
-                        Logger.Error($"Failed to parse the value '{logTypeEntry}' as a {nameof(LogType)} value");
-                    }
-                }
+                // Output the argument variables now that the initial logging state has been applied
+                Logger.Log($"Parsed argument variables ({argumentVariables.Count}):\n\t{string.Join("\n\t", argumentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
                 // How this program is going to operate will depend on the operation marker that is specified
                 if (argumentVariables.TryGetValue(PIPELINE_ARGUMENT_MARKER, out var pipelinePath) == true &&
@@ -126,6 +111,23 @@ namespace BatchFilePipelineCLI
 
             // Read in the environment variables that can be used for executing the workflow
             var environmentVariables = LoadEnvironmentVariables();
+
+            // Combine all of the environment variable sources together for the final collection that will be used
+            var fullEnvironmentVariables = environmentVariables
+                .Concat(pipelineDescription.Environment)
+                .Concat(argumentVariables)
+                .ToDictionary(x => x.Key, x => x.Value);
+            ParseLoggerArguments(fullEnvironmentVariables);
+            Logger.Log($"Complete Environment Variable Set ({fullEnvironmentVariables.Count}):\n\t{string.Join("\n\t", fullEnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
+
+            // Try to load the library of nodes that are available for use in the pipeline
+            var nodeLibrary = new NodeLibrary();
+            if (nodeLibrary.TryLoadFromAppDomain() == false)
+            {
+                Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
+                return -1;
+            }
+            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.ID).Select(x => $"{x.nodeType.FullName}\n\t\tID={x.characteristics.ID}\n\t\tUsage Flags={x.characteristics.UsageFlags}\n\t\tIs Shared={x.characteristics.IsShared}"))}");
 
             // TODO: Try to parse the description into a working pipeline
 
@@ -190,6 +192,38 @@ namespace BatchFilePipelineCLI
                 argumentVariables[key] = args[i];
             }
             return argumentVariables;
+        }
+
+        /// <summary>
+        /// Parse the supplied collection of arguments to see how it should apply to the logging
+        /// </summary>
+        /// <param name="arguments">The collection of arguments that are available for use</param>
+        private static void ParseLoggerArguments(Dictionary<string, string?> arguments)
+        {
+            // Log file output
+            if (arguments.TryGetValue(LOG_FILE_OUTPUT_MARKER, out var logFileOutput) &&
+                string.IsNullOrWhiteSpace(logFileOutput) == false)
+            {
+                Logger.RemoveAll(x => x is FileLogOutput);
+                Logger.AddLogger(new FileLogOutput(logFileOutput));
+            }
+
+            //Log Level
+            if (arguments.TryGetValue(LOG_TYPE_MARKER, out var logTypeEntry) == false)
+            {
+                return;
+            }
+
+            // We need to check if the type is valid for use
+            if (Enum.TryParse<LogType>(logTypeEntry, out var logType) == false)
+            {
+                Logger.Error($"Failed to parse the value '{logTypeEntry}' as a {nameof(LogType)} value");
+            }
+            else if (logType != Logger.LogLevel)
+            {
+                Logger.Log($"Adjusting log level to '{logType}'");
+                Logger.LogLevel = logType;
+            }
         }
     }
 }
