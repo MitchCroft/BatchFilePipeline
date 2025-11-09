@@ -20,15 +20,17 @@
                 Console.ForegroundColor = type switch
                 {
                     LogType.Warn        => ConsoleColor.Yellow,
+                    LogType.Success     => ConsoleColor.Green,
                     LogType.Error       => ConsoleColor.Red,
                     LogType.Exception   => ConsoleColor.Magenta,
                     LogType.Assert      => ConsoleColor.Cyan,
                     _                   => ConsoleColor.White,
                 };
-                if (type == LogType.Info)
+                if (type <= LogType.Success)
                 {
                     Console.WriteLine($"[{type}] {message}");
-                } else
+                }
+                else
                 {
                     Console.Error.WriteLine($"[{type}] {message}");
                 }

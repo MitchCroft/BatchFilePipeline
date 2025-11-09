@@ -22,7 +22,7 @@
         /// <summary>
         /// The minimum log level that can be output by the contained elements
         /// </summary>
-        public static LogType LogLevel { get; set; } = LogType.Info;
+        public static LogType LogLevel { get; set; } = LogType.Success;
 
         /*----------Functions----------*/
         //PUBLIC

@@ -21,6 +21,11 @@ namespace BatchFilePipeline
         private const char ARGUMENT_MARKER = '-';
 
         /// <summary>
+        /// Marker that can be used to try and define the type of logs that will be output
+        /// </summary>
+        private const string LOG_TYPE_MARKER = "logType";
+
+        /// <summary>
         /// Marker that will be used to define the file that log information should be output to for testing
         /// </summary>
         private const string LOG_FILE_OUTPUT_MARKER = "logFile";
@@ -54,11 +59,24 @@ namespace BatchFilePipeline
                 // Parse the arguments into the different elements that will be needed for testing
                 var argumentVariables = ParseArgumentVariables(args);
 
-                // Check if we need to route logs to a file for persistence as well
+                // Check for initial log markers that may be needed
                 if (argumentVariables.TryGetValue(LOG_FILE_OUTPUT_MARKER, out var logFileOutput) &&
                     string.IsNullOrWhiteSpace(logFileOutput) == false)
                 {
                     Logger.AddLogger(new FileLogOutput(logFileOutput));
+                }
+                if (argumentVariables.TryGetValue(LOG_TYPE_MARKER, out var logTypeEntry))
+                {
+                    // We need to check if the type is valid for use
+                    if (Enum.TryParse<LogType>(logTypeEntry, out var logType) == true)
+                    {
+                        Logger.Log($"Adjusting log level to '{logType}'");
+                        Logger.LogLevel = logType;
+                    }
+                    else
+                    {
+                        Logger.Error($"Failed to parse the value '{logTypeEntry}' as a {nameof(LogType)} value");
+                    }
                 }
 
                 // How this program is going to operate will depend on the operation marker that is specified
