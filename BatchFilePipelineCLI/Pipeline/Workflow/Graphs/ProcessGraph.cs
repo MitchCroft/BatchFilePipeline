@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.Logging;
+﻿using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Nodes;
 using System.Diagnostics;
@@ -17,6 +18,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// The default maximum number of node steps that can be made before the process is killed
         /// </summary>
         private const int DEFAULT_MAX_TRAVERSAL_STEPS = 25;
+
+        //PROTECTED
+
+        /// <summary>
+        /// Define a property that can be used to identify the maximum traversal depth for the graph of elements
+        /// </summary>
+        protected readonly ArgumentDescription _maxTraversalDepthProperty = new ArgumentDescription
+        (
+            "MaxTraversalDepth",
+            "The maximum number of node steps that can be made when processing a graph before the process is killed",
+            typeof(int),
+            required: false,
+            defaultValue: 25
+        );
 
         //PRIVATE
 

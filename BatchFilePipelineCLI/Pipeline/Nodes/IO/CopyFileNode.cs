@@ -1,4 +1,6 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
+﻿using BatchFilePipelineCLI.DynamicProperties;
+
+namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
 {
     /// <summary>
     /// Define a Node that can be used to copy a file from one location to another
@@ -12,7 +14,7 @@
         /// <summary>
         /// There will be a number of properties that will be used in this operation
         /// </summary>
-        private readonly NodeProperty _sourceProperty = new NodeProperty
+        private readonly ArgumentDescription _sourceProperty = new ArgumentDescription
         (
             "SourceFileName",
             "The path to the original file that is to be copied",
@@ -20,7 +22,7 @@
             required: true,
             example: "Path/To/File/Source.txt"
         );
-        private readonly NodeProperty _destinationProperty = new NodeProperty
+        private readonly ArgumentDescription _destinationProperty = new ArgumentDescription
         (
             "DestinationFileName",
             "The file path where the copy of the file should be placed",
@@ -28,7 +30,7 @@
             required: true,
             example: "Path/To/File/Destination.txt"
         );
-        private readonly NodeProperty _overwriteProperty = new NodeProperty
+        private readonly ArgumentDescription _overwriteProperty = new ArgumentDescription
         (
             "Overwrite",
             "Flags if the file should overwrite an existing file at the target location",
@@ -44,13 +46,13 @@
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<NodeProperty> GetInputProperties() => new NodeProperty[] { _sourceProperty, _destinationProperty, _overwriteProperty };
+        public IList<ArgumentDescription> GetInputProperties() => [_sourceProperty, _destinationProperty, _overwriteProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<NodeProperty> GetOutputProperties() => Array.Empty<NodeProperty>();
+        public IList<ArgumentDescription> GetOutputProperties() => Array.Empty<ArgumentDescription>();
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
