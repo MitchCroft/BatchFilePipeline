@@ -24,12 +24,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <summary>
         /// Define a property that can be used to identify the maximum traversal depth for the graph of elements
         /// </summary>
-        protected readonly Property _maxTraversalDepthProperty = new Property
+        protected readonly Property _maxTraversalDepthProperty = Property.Create
         (
             "maxTraversalDepth",
             "The maximum number of node steps that can be made when processing a graph before the process is killed",
-            typeof(int),
-            required: false,
             defaultValue: 25
         );
 

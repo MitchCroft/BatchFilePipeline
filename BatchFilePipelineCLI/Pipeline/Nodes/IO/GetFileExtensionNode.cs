@@ -3,36 +3,34 @@
 namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
 {
     /// <summary>
-    /// Define a Node that can be used to copy a file from one location to another
+    /// Define a Node that can be used to get the file extension from a specified file path
     /// </summary>
-    [PipelineNode(nameof(CopyFileNode), NodeUsage.All)]
-    internal sealed class CopyFileNode : IPipelineNode
+    [PipelineNode(nameof(GetFileExtensionNode), NodeUsage.All)]
+    internal sealed class GetFileExtensionNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// There will be a number of properties that will be used in this operation
+        /// We need to get the path of the file that is to be processed
         /// </summary>
-        private readonly Property _sourceProperty = Property.Create
+        private readonly Property _pathProperty = Property.Create
         (
-            "SourceFileName",
-            "The path to the original file that is to be copied",
+            "FilePath",
+            "The full path to the file from which the extension is to be extracted",
             typeof(string),
-            example: "Path/To/File/Source.txt"
+            example: "Path/To/File/Example.txt"
         );
-        private readonly Property _destinationProperty = Property.Create
+
+        /// <summary>
+        /// Defines the property that will be used as an output of the node for use in later stages
+        /// </summary>
+        private readonly Property _outputProperty = Property.Create
         (
-            "DestinationFileName",
-            "The file path where the copy of the file should be placed",
+            "Output",
+            "The string value that contains extension of the file path",
             typeof(string),
-            example: "Path/To/File/Destination.txt"
-        );
-        private readonly Property _overwriteProperty = Property.Create
-        (
-            "Overwrite",
-            "Flags if the file should overwrite an existing file at the target location",
-            defaultValue: false
+            example: ".txt"
         );
 
         /*----------Functions----------*/
@@ -42,13 +40,13 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_sourceProperty, _destinationProperty, _overwriteProperty];
+        public IList<Property> GetInputProperties() => [_pathProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
+        public IList<Property> GetOutputProperties() => [_outputProperty];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -59,18 +57,16 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
                                                             CancellationToken cancellationToken)
         {
-            // Process the copy operation
+            // Process the string format operation
             try
             {
-                File.Copy
-                (
-                    (string)inputs[_sourceProperty.Name]!,
-                    (string)inputs[_destinationProperty.Name]!,
-                    (bool)inputs[_overwriteProperty.Name]!
-                );
+                string filePath = (string)inputs[_pathProperty.Name]!;
                 return ValueTask.FromResult(new NodeOutput
                 (
-                    new Dictionary<string, object?>()
+                    new Dictionary<string, object?>
+                    {
+                        { _outputProperty.Name, Path.GetExtension(filePath) }
+                    }
                 ));
             }
 

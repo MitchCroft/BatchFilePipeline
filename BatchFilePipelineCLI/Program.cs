@@ -137,17 +137,17 @@ namespace BatchFilePipelineCLI
 
             // Attempt to load the different workflows for use
             bool loadedProcess = true;
-            if (preProcess.TryInitialiseGraph(pipelineDescription.Workflow.PreProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            if (preProcess.TryInitialiseGraph(pipelineDescription.Workflow.PreProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
             {
                 Logger.Error($"Failed to load the pre-process graph for the pipeline '{pipelineDescription.Name}'");
                 loadedProcess = false;
             }
-            if (mainProcess.TryInitialiseGraph(pipelineDescription.Workflow.ProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            if (mainProcess.TryInitialiseGraph(pipelineDescription.Workflow.ProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
             {
                 Logger.Error($"Failed to load the main process graph for the pipeline '{pipelineDescription.Name}'");
                 loadedProcess = false;
             }
-            if (postProcess.TryInitialiseGraph(pipelineDescription.Workflow.PostProcessGraph, nodeLibrary, fullEnvironmentVariables) == false)
+            if (postProcess.TryInitialiseGraph(pipelineDescription.Workflow.PostProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
             {
                 Logger.Error($"Failed to load the post-process graph for the pipeline '{pipelineDescription.Name}'");
                 loadedProcess = false;
@@ -159,6 +159,8 @@ namespace BatchFilePipelineCLI
 
             // We made it this far, we can try to run the graphs
             // TODO:
+
+            return await preProcess.TestProcessGraphAsync(fullEnvironmentVariables, cancellationToken);
 
             // If we got this far, we're good
             return 0;

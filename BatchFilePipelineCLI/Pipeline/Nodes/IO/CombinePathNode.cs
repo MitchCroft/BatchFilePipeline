@@ -3,36 +3,41 @@
 namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
 {
     /// <summary>
-    /// Define a Node that can be used to copy a file from one location to another
+    /// Define a Node that can be used to combine multiple path segments into a single path
     /// </summary>
-    [PipelineNode(nameof(CopyFileNode), NodeUsage.All)]
-    internal sealed class CopyFileNode : IPipelineNode
+    [PipelineNode(nameof(CombinePathNode), NodeUsage.All)]
+    internal sealed class CombinePathNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// There will be a number of properties that will be used in this operation
+        /// We will need to get the different path segments that are to be combined
         /// </summary>
-        private readonly Property _sourceProperty = Property.Create
+        private readonly Property _firstPathProperty = Property.Create
         (
-            "SourceFileName",
-            "The path to the original file that is to be copied",
+            "LeftPath",
+            "The first segment of the path that is to be combined",
             typeof(string),
-            example: "Path/To/File/Source.txt"
+            "Parent/Directory/"
         );
-        private readonly Property _destinationProperty = Property.Create
+        private readonly Property _secondPathProperty = Property.Create
         (
-            "DestinationFileName",
-            "The file path where the copy of the file should be placed",
+            "RightPath",
+            "The second segment of the path that is to be combined",
             typeof(string),
-            example: "Path/To/File/Destination.txt"
+            "Child/Directory/File.txt"
         );
-        private readonly Property _overwriteProperty = Property.Create
+
+        /// <summary>
+        /// We will produce the single combined path as an output
+        /// </summary>
+        private readonly Property _outputProperty = Property.Create
         (
-            "Overwrite",
-            "Flags if the file should overwrite an existing file at the target location",
-            defaultValue: false
+            "Output",
+            "The resulting combined path from the provided segments",
+            typeof(string),
+            "Parent/Directory/Child/Directory/File.txt"
         );
 
         /*----------Functions----------*/
@@ -42,13 +47,13 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_sourceProperty, _destinationProperty, _overwriteProperty];
+        public IList<Property> GetInputProperties() => [_firstPathProperty, _secondPathProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
+        public IList<Property> GetOutputProperties() => [_outputProperty];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -59,18 +64,17 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
                                                             CancellationToken cancellationToken)
         {
-            // Process the copy operation
+            // Process the string format operation
             try
             {
-                File.Copy
-                (
-                    (string)inputs[_sourceProperty.Name]!,
-                    (string)inputs[_destinationProperty.Name]!,
-                    (bool)inputs[_overwriteProperty.Name]!
-                );
+                string firstPath = (string)inputs[_firstPathProperty.Name]!;
+                string secondPath = (string)inputs[_secondPathProperty.Name]!;
                 return ValueTask.FromResult(new NodeOutput
                 (
-                    new Dictionary<string, object?>()
+                    new Dictionary<string, object?>
+                    {
+                        { _outputProperty.Name, Path.Combine(firstPath, secondPath) }
+                    }
                 ));
             }
 

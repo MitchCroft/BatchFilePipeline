@@ -26,6 +26,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             base("Pre-Process")
         {}
 
+        // TEMP
+        public ValueTask<int> TestProcessGraphAsync(Dictionary<string, string?> environmentVariables,
+                                                    CancellationToken cancellationToken)
+        {
+            return ExecuteGraphAsync(environmentVariables, new Dictionary<string, object?>(), cancellationToken);
+        }
+
         //PROTECTED
 
         /// <summary>
