@@ -3,7 +3,7 @@
     /// <summary>
     /// A property that can be used to describe the different properties a Node can use
     /// </summary>
-    public readonly struct ArgumentDescription
+    public readonly struct Property
     {
         /*----------Variables----------*/
         //PUBLIC
@@ -53,7 +53,7 @@
         /// <param name="required">Flags if this property is required to be defined in the workflow</param>
         /// <param name="defaultValue">[Optional] A default value that will be assigned to the property if none is supplied</param>
         /// <param name="example">A string that can be used to define an example of usage for the property, possible values, etc.</param>
-        public ArgumentDescription(string name,
+        public Property(string name,
                         string tooltip,
                         Type type,
                         bool required = true,
@@ -67,7 +67,7 @@
             if (defaultValue != null &&
                 type.IsAssignableFrom(defaultValue.GetType()) == false)
             {
-                throw new ArgumentException($"[{nameof(ArgumentDescription)}] The default value '{defaultValue}' assigned to '{name}' isn't assignable from the expected type '{type}'");
+                throw new ArgumentException($"[{nameof(Property)}] The default value '{defaultValue}' assigned to '{name}' isn't assignable from the expected type '{type}'");
             }
             DefaultValue = defaultValue;
             Example = example;

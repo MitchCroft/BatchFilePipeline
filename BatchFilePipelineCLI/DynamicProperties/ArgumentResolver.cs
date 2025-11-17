@@ -28,6 +28,84 @@ namespace BatchFilePipelineCLI.DynamicProperties
         //PUBLIC
 
         /// <summary>
+        /// Handle the process of resolving an environment variable for use in the pipeline
+        /// </summary>
+        /// <param name="property">The property that is to be retrieved from the environment variables for use</param>
+        /// <param name="environmentVariables">The collection of environment variables that can be pulled from</param>
+        /// <param name="value">Passes out the value that was determine from the available information for use</param>
+        /// <returns>Returns true if the value is valid for use</returns>
+        public static bool TryResolveEnvironmentVariable(Property property,
+                                                         Dictionary<string, string?> environmentVariables,
+                                                         [MaybeNull] out object? value)
+        {
+            // If there is no environment variable with the name, we can try to use the default value
+            if (environmentVariables.TryGetValue(property.Name, out var envValue) == false)
+            {
+                // If the variable is required, we have a problem
+                if (property.Required == true)
+                {
+                    Logger.Error($"[{nameof(ArgumentResolver)}] Property '{property}' is required but no environment variable was supplied");
+                    value = default;
+                    return false;
+                }
+
+                // We have a default value that should ideally be useful for the type
+                return TryResolveRuntimeValue(property.DefaultValue, property, out value);
+            }
+
+            // Otherwise, we need to try and parse it from the value that was set
+            return TypeParser.TryParse(envValue ?? string.Empty, property.Type, out value);
+        }
+
+        /// <summary>
+        /// Handle the process of resolving an environment variable for use in the pipeline
+        /// </summary>
+        /// <typeparam name="T">The expected type of the value to be retrieved from the environment variable</typeparam>
+        /// <param name="property">The property that is to be retrieved from the environment variables for use</param>
+        /// <param name="environmentVariables">The collection of environment variables that can be pulled from</param>
+        /// <param name="value">Passes out the value that was determine from the available information for use</param>
+        /// <returns>Returns true if the value is valid for use</returns>
+        public static bool TryResolveEnvironmentVariable<T>(Property property,
+                                                            Dictionary<string, string?> environmentVariables,
+                                                            [MaybeNull] out T? value)
+        {
+            // If there is no environment variable with the name, we can try to use the default value
+            if (environmentVariables.TryGetValue(property.Name, out var envValue) == false)
+            {
+                // If the variable is required, we have a problem
+                if (property.Required == true)
+                {
+                    Logger.Error($"[{nameof(ArgumentResolver)}] Property '{property}' is required but no environment variable was supplied");
+                    value = default;
+                    return false;
+                }
+
+                // Try to resolve the value from the default
+                if (TryResolveRuntimeValue(property.DefaultValue, property, out var runtimeValue) == false)
+                {
+                    Logger.Error($"[{nameof(ArgumentResolver)}] Failed to resovle the default value for property '{property}' for use");
+                    value = default;
+                    return false;
+                }
+
+                // Try to cast the result to the expected type
+                if (runtimeValue is T castValue == false)
+                {
+                    Logger.Error($"[{nameof(ArgumentResolver)}] The resolved default value for property '{property}' is not compatible with the expected type '{typeof(T)}'");
+                    value = default;
+                    return false;
+                }
+
+                // We're good to go
+                value = castValue;
+                return true;
+            }
+
+            // Otherwise, we need to try and parse it from the value that was set
+            return TypeParser.TryParse(envValue ?? string.Empty, out value);
+        }
+
+        /// <summary>
         /// Handle the process of resolving a dynamic argument value for use in the pipeline
         /// </summary>
         /// <param name="descriptor">The description of the value within the process that is to be interpretted</param>
@@ -36,11 +114,11 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="runtimeVariables">The collection of runtime variables that will be used for processing</param>
         /// <param name="value">Passes out the value that was determined from the descriptor that can be used</param>
         /// <returns>Returns true if the descriptor could be interpreted properly and the output value is an accurate representation</returns>
-        public static bool TryResolveArgument(string? descriptor,
-                                              ArgumentDescription property,
-                                              Dictionary<string, string?> environmentVariables,
-                                              Dictionary<string, object?> runtimeVariables,
-                                              [MaybeNull] out object? value)
+        public static bool TryResolveDescription(string? descriptor,
+                                                 Property property,
+                                                 Dictionary<string, string?> environmentVariables,
+                                                 Dictionary<string, object?> runtimeVariables,
+                                                 [MaybeNull] out object? value)
         {
             // We need a buffer to process the data that is contained
             var buffer = RentBuffer();
@@ -60,7 +138,16 @@ namespace BatchFilePipelineCLI.DynamicProperties
                 // If there are no variables or sections, then we check if there is a default value
                 if (variables == 0 && sections == 0)
                 {
-                    return TryResolveDefaultValue(property, out value);
+                    // If the variable is required, we have a problem
+                    if (property.Required == true)
+                    {
+                        Logger.Error($"[{nameof(ArgumentResolver)}] Property '{property}' is required but no values were supplied");
+                        value = null;
+                        return false;
+                    }
+
+                    // We have a default value that should ideally be useful for the type
+                    return TryResolveRuntimeValue(property.DefaultValue, property, out value);
                 }
 
                 // If we only have a variable, we can try to retrieve the value for use
@@ -71,19 +158,12 @@ namespace BatchFilePipelineCLI.DynamicProperties
 
                     // Try and resolve the variable that is needed
                     var resolution = TryResolveVariable(variableName, environmentVariables, runtimeVariables, out value);
-                    if (resolution == Resolution.Failed)
+                    switch (resolution)
                     {
-                        return false;
+                        case Resolution.Runtime:        return TryResolveRuntimeValue(value, property, out value);
+                        case Resolution.Environment:    return TypeParser.TryParse(value as string ?? string.Empty, property.Type, out value);
+                        default:                        return false;
                     }
-
-                    // If this was an environment variable, we might need to convert it
-                    if (resolution == Resolution.Environment)
-                    {
-                        return TypeParser.TryParse(value as string ?? string.Empty, property.Type, out value);
-                    }
-
-                    // Check that the value is compatible with the required type
-                    return IsTypeValidForProperty(value, property);
                 }
 
                 // If we only have a single static section, we can try and parse that directly
@@ -235,38 +315,20 @@ namespace BatchFilePipelineCLI.DynamicProperties
         }
 
         /// <summary>
-        /// Try to resolve the default value that is specified for the property
+        /// Verify the runtime value is valid for use with the property
         /// </summary>
-        /// <param name="property">The property that is being processed</param>
-        /// <param name="value">Passes out the value for the property if available</param>
-        /// <returns>Returns true if the value returned is valid for use</returns>
-        private static bool TryResolveDefaultValue(ArgumentDescription property,
-                                                   [MaybeNull] out object? value)
+        /// <param name="inputValue">The input value that is to be verified for use as the output</param>
+        /// <param name="property">The property that is being used for processing</param>
+        /// <param name="outputValue">Passes out the value that should be used for processing</param>
+        /// <returns>Returns true if the object is valid for use with the property</returns>
+        private static bool TryResolveRuntimeValue(object? inputValue,
+                                                   Property property,
+                                                   [MaybeNull] out object? outputValue)
         {
-            // If this is required, then we have a problem
-            if (property.Required == true)
+            // If the value is null, it can only be used with compatible types
+            if (inputValue == null)
             {
-                value = null;
-                return false;
-            }
-
-            // Otherwise, just use the default value
-            value = property.DefaultValue;
-            return IsTypeValidForProperty(value, property);
-        }
-
-        /// <summary>
-        /// Check to see if the specified value is valid for use with the property
-        /// </summary>
-        /// <param name="value">The resolved value that is to be evaluated</param>
-        /// <param name="property">The property that the value must work for</param>
-        /// <returns>Returns true if the value is valid for use with the property</returns>
-        /// <returns>Returns true if the value is valid for use with the property</returns>
-        private static bool IsTypeValidForProperty(object? value, ArgumentDescription property)
-        {
-            // If the value is null, it can only be assigned to compatible types
-            if (value == null)
-            {
+                outputValue = null;
                 if (property.Type.IsValueType == false || Nullable.GetUnderlyingType(property.Type) != null)
                 {
                     return true;
@@ -275,44 +337,39 @@ namespace BatchFilePipelineCLI.DynamicProperties
                 return false;
             }
 
-            // Check the type against the required rules
-            Type sourceType = value.GetType();
-
-            // Check for direct assignment
-            if (property.Type.IsAssignableFrom(sourceType) == true)
+            // Check for direct assignment suitability
+            if (property.Type.IsAssignableFrom(inputValue.GetType()) == true)
             {
+                outputValue = inputValue;
                 return true;
             }
 
-            // Find the valid conversions
-            TypeCode targetCode = Type.GetTypeCode(property.Type);
-            bool isValid = Type.GetTypeCode(sourceType) switch
+            // If the values are convertible, we can try and convert them
+            if (inputValue is IConvertible convertibleValue &&
+                typeof(IConvertible).IsAssignableFrom(property.Type) == true)
             {
-                TypeCode.Byte => targetCode is TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.SByte => targetCode is TypeCode.Int16 or TypeCode.Int32 or TypeCode.Int64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.Int16 => targetCode is TypeCode.Int32 or TypeCode.Int64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.UInt16 => targetCode is TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.Int32 => targetCode is TypeCode.Int64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.UInt32 => targetCode is TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.Int64 => targetCode is TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.UInt64 => targetCode is TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.Char => targetCode is TypeCode.UInt16 or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal,
-                TypeCode.Single => targetCode is TypeCode.Double,
-                _ => false
-            };
-
-            // If the conversion isn't valid, log it
-            if (isValid == false)
-            {
-                LogErrorOutput();
-                return false;
+                try
+                {
+                    outputValue = Convert.ChangeType(convertibleValue, property.Type);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    LogErrorOutput();
+                    Logger.Exception(ex);
+                    outputValue = null;
+                    return false;
+                }
             }
-            return true;
+
+            // Otherwise, there's nothing we can do
+            outputValue = null;
+            return false;
 
             // Local function to log the error message
             void LogErrorOutput()
             {
-                Logger.Error($"[{nameof(ArgumentResolver)}] The resolved value '{(value != null ? value : Null)}' {(value != null ? $"({value.GetType()}) " : string.Empty)}for argument '{property}' is not compatible with the required type");
+                Logger.Error($"[{nameof(ArgumentResolver)}] The resolved value '{(inputValue != null ? inputValue : Null)}' {(inputValue != null ? $"({inputValue.GetType()}) " : string.Empty)}for argument '{property}' is not compatible with the required type");
             }
         }
 

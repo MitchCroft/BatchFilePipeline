@@ -14,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// <summary>
         /// There will be a number of properties that will be used in this operation
         /// </summary>
-        private readonly ArgumentDescription _sourceProperty = new ArgumentDescription
+        private readonly Property _sourceProperty = new Property
         (
             "SourceFileName",
             "The path to the original file that is to be copied",
@@ -22,7 +22,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
             required: true,
             example: "Path/To/File/Source.txt"
         );
-        private readonly ArgumentDescription _destinationProperty = new ArgumentDescription
+        private readonly Property _destinationProperty = new Property
         (
             "DestinationFileName",
             "The file path where the copy of the file should be placed",
@@ -30,7 +30,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
             required: true,
             example: "Path/To/File/Destination.txt"
         );
-        private readonly ArgumentDescription _overwriteProperty = new ArgumentDescription
+        private readonly Property _overwriteProperty = new Property
         (
             "Overwrite",
             "Flags if the file should overwrite an existing file at the target location",
@@ -46,20 +46,22 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<ArgumentDescription> GetInputProperties() => [_sourceProperty, _destinationProperty, _overwriteProperty];
+        public IList<Property> GetInputProperties() => [_sourceProperty, _destinationProperty, _overwriteProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<ArgumentDescription> GetOutputProperties() => Array.Empty<ArgumentDescription>();
+        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
         /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs)
+        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
+                                                            CancellationToken cancellationToken)
         {
             // Process the copy operation
             try

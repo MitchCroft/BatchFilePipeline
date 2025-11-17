@@ -15,18 +15,18 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         //CONST
 
         /// <summary>
-        /// The default maximum number of node steps that can be made before the process is killed
+        /// The expected key that will be used to identify the next node that is to be processed
         /// </summary>
-        private const int DEFAULT_MAX_TRAVERSAL_STEPS = 25;
+        private const string DefaultNextNodeKey = "Default";
 
         //PROTECTED
 
         /// <summary>
         /// Define a property that can be used to identify the maximum traversal depth for the graph of elements
         /// </summary>
-        protected readonly ArgumentDescription _maxTraversalDepthProperty = new ArgumentDescription
+        protected readonly Property _maxTraversalDepthProperty = new Property
         (
-            "MaxTraversalDepth",
+            "maxTraversalDepth",
             "The maximum number of node steps that can be made when processing a graph before the process is killed",
             typeof(int),
             required: false,
@@ -175,18 +175,141 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
+            // Find the traversal depth limit from the properties
+            if (ArgumentResolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, environmentVariables, out int maxTraversalDepth) == false)
+            {
+                Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} failed to resolve the maximum traversal depth from the environment variables, cannot continue");
+                return -1;
+            }
+
+            // We're going to need a collection of inputs that can be used to process each node
+            Dictionary<string, object?> nodeInputBuffer = new();
+
             // Progress through the graph while there are connections to follow
             NodeDescription? activeNode = _primaryNode;
             int steps = 0;
-            for (; steps < DEFAULT_MAX_TRAVERSAL_STEPS && activeNode is not null; ++steps)
+            for (; steps < maxTraversalDepth && activeNode is not null; ++steps)
             {
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+                //////////-------------------------------Create Node Inputs-------------------------------//////////
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+                // Retrieve the node instance that is to be processed
+                if (_graph.TryGetValue(activeNode.ID!, out var nodeInstance) == false)
+                {
+                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} failed to retrieve the node instance for '{activeNode.Name}' ({activeNode.ID}), cannot continue");
+                    return 404;
+                }
+
+                // Find the collection of inputs needed for the node
+                nodeInputBuffer.Clear();
+                var nodeInputs = nodeInstance.GetInputProperties();
+                for (int i = 0; i < nodeInputs.Count; ++i)
+                {
+                    // Look for a specified descriptor for the input
+                    activeNode.Inputs.TryGetValue(nodeInputs[i].Name, out var inputDescriptor);
+
+                    // Try to resolve the description into a value that can be assigned
+                    if (ArgumentResolver.TryResolveDescription(inputDescriptor, nodeInputs[i], environmentVariables, runtimeVariables, out var resolvedInput) == false)
+                    {
+                        Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}'");
+                        return 422;
+                    }
+
+                    // Store the resolved value for use
+                    nodeInputBuffer[nodeInputs[i].Name] = resolvedInput;
+                }
+
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+                //////////----------------------------------Process Node----------------------------------//////////
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                // We can process the node operation and receive the outputs that need to be handled
+                var nodeOutput = await nodeInstance.ProcessNodeResultAsync(nodeInputBuffer, cancellationToken);
+                if (cancellationToken.IsCancellationRequested == true)
+                {
+                    Logger.Warning($"[{nameof(ProcessGraph)}] {_graphName} operation was cancelled while processing node '{activeNode.Name}' ({activeNode.ID})");
+                    return 499;
+                }
+
+                // If the process failed, we need to stop here
+                if (nodeOutput.IsError == true)
+                {
+                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID})\n{nodeOutput}");
+                    return nodeOutput.ResultCode;
+                }
+
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+                //////////------------------------------Handle Node Outputs-------------------------------//////////
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                // Check there are outputs to be added to the runtime variables
+                if (nodeOutput.Results != null)
+                {
+                    // We have the collection of outputs that need to be be mapped into the runtime variables for use
+                    var nodeOutputs = nodeInstance.GetOutputProperties();
+                    for (int i = 0; i < nodeOutputs.Count; ++i)
+                    {
+                        // See if there is a mapping value for the output
+                        if (activeNode.Outputs.TryGetValue(nodeOutputs[i].Name, out var outputMapping) == false ||
+                            string.IsNullOrWhiteSpace(outputMapping) == true)
+                        {
+                            continue;
+                        }
+
+                        // Check if there is an output value in the result
+                        if (nodeOutput.Results.TryGetValue(nodeOutputs[i].Name, out var outputValue) == false)
+                        {
+                            Logger.Warning($"[{nameof(ProcessGraph)}] {_graphName} couldn't find an output value for the property '{nodeOutputs[i]}' from node '{activeNode.Name}' ({activeNode.ID})");
+                            continue;
+                        }
+
+                        // Assign the output to the runtime variable defined
+                        runtimeVariables[outputMapping] = outputValue;
+                    }
+                }
+
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+                //////////-------------------------------Identify Next Node-------------------------------//////////
+                ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                // If there are no connections specified, then we're at the end of the branch
+                if (activeNode.Connections.Count == 0)
+                {
+                    activeNode = null;
+                    break;
+                }
+
+                // We need to try and find the node that is to be used
+                string nextNode = nodeOutput.NextNode ?? DefaultNextNodeKey;
+                if (activeNode.Connections.TryGetValue(nextNode, out var nextNodeId) == false)
+                {
+                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID}). Unable to find a matching connection for the selection case '{nextNode}'");
+                    break;
+                }
+
+                // If the next node ID is blank, we've also reach the end of the graph (in case switching logic needs to end on a path)
+                if (string.IsNullOrWhiteSpace(nextNodeId) == true)
+                {
+                    activeNode = null;
+                    break;
+                }
+
+                // Try to find the node description that is to be processed next
+                if (_nodeDescriptions.TryGetValue(nextNodeId, out var nextActiveNode) == false)
+                {
+                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode}' ({activeNode.ID}). Selected output path was '{nextNode}' which was assigned the ID '{nextNodeId}' but no node in the graph with that ID could be found");
+                    break;
+                }
+
+                // We have the next node in the graph to be processed
+                activeNode = nextActiveNode;
             }
 
             // If we reached the upper limit, that's a problem
-            if (steps == DEFAULT_MAX_TRAVERSAL_STEPS)
+            if (steps == maxTraversalDepth)
             {
-                Logger.Error($"{_graphName} reached the maximum number of steps ({DEFAULT_MAX_TRAVERSAL_STEPS}) while processing the request, failed to complete");
+                Logger.Error($"{_graphName} reached the maximum number of steps ({maxTraversalDepth}) while processing the request, failed to complete");
                 return -1;
             }
 
