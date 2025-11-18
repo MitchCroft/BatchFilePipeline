@@ -7,13 +7,14 @@ using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow;
+using BatchFilePipelineCLI.DynamicProperties;
 
 namespace BatchFilePipelineCLI
 {
     /// <summary>
     /// Handle the program entry for the CLI processing pipeline
     /// </summary>
-    internal class Program
+    internal static class Program
     {
         /*----------Variables----------*/
         //CONST
@@ -24,19 +25,37 @@ namespace BatchFilePipelineCLI
         private const char ARGUMENT_MARKER = '-';
 
         /// <summary>
-        /// Marker that can be used to try and define the type of logs that will be output
+        /// The type of logs that will be output by the program
         /// </summary>
-        private const string LOG_TYPE_MARKER = "logType";
+        private static readonly Property LOG_TYPE = Property.Create
+        (
+            "logType",
+            "Defines the type of logs that will be output by the program",
+            LogType.Success,
+            string.Join(", ", Enum.GetNames<LogType>())
+        );
 
         /// <summary>
-        /// Marker that will be used to define the file that log information should be output to for testing
+        /// Used to define the file that log information should be output to for testing
         /// </summary>
-        private const string LOG_FILE_OUTPUT_MARKER = "logFile";
+        private static readonly Property LOG_FILE_OUTPUT = Property.Create
+        (
+            "logFile",
+            "Defines a file on disk where log information can be output as well for later review",
+            string.Empty,
+            "Path/To/File.log"
+        );
 
         /// <summary>
-        /// The argument value that is being looked for to determine the pipeline description that is to be run
+        /// The path to the pipeline description file that is to be processed
         /// </summary>
-        private const string PIPELINE_ARGUMENT_MARKER = "pipeline";
+        private static readonly Property PIPELINE_ARGUMENT = Property.Create
+        (
+            "pipeline",
+            "The path to the pipeline description file that is to be processed",
+            string.Empty,
+            "Path/To/Pipeline.xml"
+        );
 
         /*----------Functions----------*/
         //PRIVATE
@@ -70,7 +89,7 @@ namespace BatchFilePipelineCLI
                 Logger.Log($"Parsed argument variables ({argumentVariables.Count}):\n\t{string.Join("\n\t", argumentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
                 // How this program is going to operate will depend on the operation marker that is specified
-                if (argumentVariables.TryGetValue(PIPELINE_ARGUMENT_MARKER, out var pipelinePath) == true &&
+                if (ArgumentResolver.TryResolveEnvironmentVariable(PIPELINE_ARGUMENT, argumentVariables, out string? pipelinePath) == true &&
                     string.IsNullOrWhiteSpace(pipelinePath) == false)
                 {
                     return await ProcessPipelineAsync(pipelinePath, argumentVariables, cancellationTokenSource.Token);
@@ -117,7 +136,6 @@ namespace BatchFilePipelineCLI
             var pipelineEnvironmentVariables = environmentVariables
                 .Concat(pipelineDescription.Environment)
                 .ToDictionary(x => x.Key, x => x.Value);
-            ParseLoggerArguments(pipelineEnvironmentVariables);
             Logger.Log($"Pipeline Environment Variable Set ({pipelineEnvironmentVariables.Count}):\n\t{string.Join("\n\t", pipelineEnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
             // Try to load the library of nodes that are available for use in the pipeline
@@ -127,7 +145,7 @@ namespace BatchFilePipelineCLI
                 Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
                 return -1;
             }
-            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.TypeID).Select(x => $"{x.nodeType.FullName}\n\t\tID={x.characteristics.TypeID}\n\t\tUsage Flags={x.characteristics.UsageFlags}\n\t\tIs Shared={x.characteristics.IsShared}"))}");
+            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.TypeID).Select(x => $"{x.nodeType.Name}\n\t\tID={x.characteristics.TypeID}\n\t\tUsageFlags={x.characteristics.UsageFlags}\n\t\tIsShared={x.characteristics.IsShared}"))}");
 
             // Create the workflow that will be processed to perform the operations required
             Workflow workflow = new Workflow();
@@ -207,28 +225,24 @@ namespace BatchFilePipelineCLI
         private static void ParseLoggerArguments(Dictionary<string, string?> arguments)
         {
             // Log file output
-            if (arguments.TryGetValue(LOG_FILE_OUTPUT_MARKER, out var logFileOutput) &&
+            if (ArgumentResolver.TryResolveEnvironmentVariable(LOG_FILE_OUTPUT, arguments, out string? logFileOutput) == true &&
                 string.IsNullOrWhiteSpace(logFileOutput) == false)
             {
                 Logger.RemoveAll(x => x is FileLogOutput);
                 Logger.AddLogger(new FileLogOutput(logFileOutput));
             }
 
-            //Log Level
-            if (arguments.TryGetValue(LOG_TYPE_MARKER, out var logTypeEntry) == false)
+            // Log Level
+            if (ArgumentResolver.TryResolveEnvironmentVariable(LOG_TYPE, arguments, out LogType logType) == false)
             {
                 return;
             }
 
             // We need to check if the type is valid for use
-            if (Enum.TryParse<LogType>(logTypeEntry, out var logType) == false)
+            if (logType != Logger.LogLevel)
             {
-                Logger.Error($"Failed to parse the value '{logTypeEntry}' as a {nameof(LogType)} value");
-            }
-            else if (logType != Logger.LogLevel)
-            {
-                Logger.Log($"Adjusting log level to '{logType}'");
                 Logger.LogLevel = logType;
+                Logger.Log($"Adjusting log level to '{logType}'");
             }
         }
     }
