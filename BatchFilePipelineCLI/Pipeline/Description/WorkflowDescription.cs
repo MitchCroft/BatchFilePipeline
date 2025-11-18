@@ -14,18 +14,18 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// The graph elements that will be processed *once* before the main process is run for all file entries collected
         /// </summary>
         [XmlElement("PreProcessGraph")]
-        public NodeDescription[] PreProcessGraph { get; set; } = Array.Empty<NodeDescription>();
+        public GraphDescription PreProcessGraph { get; set; } = new GraphDescription();
 
         /// <summary>
         /// The collection of graph elements that will be run over all identified files
         /// </summary>
         [XmlElement("ProcessGraph")]
-        public NodeDescription[] ProcessGraph { get; set; } = Array.Empty<NodeDescription>();
+        public GraphDescription ProcessGraph { get; set; } = new GraphDescription();
 
         /// <summary>
         /// The graph elements that will be processed *once* after the main process is run for all file entries collected
         /// </summary>
         [XmlElement("PostProcessGraph")]
-        public NodeDescription[] PostProcessGraph { get; set; } = Array.Empty<NodeDescription>();
+        public GraphDescription PostProcessGraph { get; set; } = new GraphDescription();
     }
 }

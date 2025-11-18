@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,8 +24,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// Create the graph with the required values
         /// </summary>
         /// <param name="graphName">The name that will be applied to the graph for display</param>
-        protected SupportGraph(string graphName) :
-            base(graphName)
+        /// <param name="validNodes">A mask of the node types that are valid for use on this graph</param>
+        protected SupportGraph(string graphName, NodeUsage validNodes) :
+            base(graphName, validNodes)
         {}
     }
 }

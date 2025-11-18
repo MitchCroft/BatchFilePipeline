@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
+﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {
     /// <summary>
     /// The main processing graph that will be run for all files collected within the batch catchment
@@ -23,8 +17,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// Create the graph with the required label
         /// </summary>
         public MainProcessGraph() :
-            base("Main Process")
+            base("Main Process", Nodes.NodeUsage.Process)
         {}
+
+        /// <summary>
+        /// Handle the setup required to execute the graph asynchronously
+        /// </summary>
+        /// <param name="environmentVariables">The collection of assigned environment variables for processing</param>
+        /// <param name="cancellationToken">Cancellation token that can be used to control the execution of the process</param>
+        /// <returns>Returns the status code of the operation once it has finished running</returns>
+        public override ValueTask<int> EvaluateGraphAsync(Dictionary<string, string?> environmentVariables,
+                                                          CancellationToken cancellationToken)
+        {
+            return ExecuteGraphAsync(environmentVariables, new Dictionary<string, object?>(), cancellationToken);
+        }
 
         //PROTECTED
 

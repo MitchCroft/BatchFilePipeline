@@ -12,6 +12,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
     internal abstract class ProcessGraph
     {
         /*----------Variables----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// The name of the graph that will be used for debug logging
+        /// </summary>
+        public readonly string Name;
+
         //CONST
 
         /// <summary>
@@ -34,9 +41,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         //PRIVATE
 
         /// <summary>
-        /// The name of the graph that will be used for debug logging
+        /// A mask that defines which nodes are valid for use in this graph
         /// </summary>
-        private readonly string _graphName;
+        private readonly NodeUsage _validNodes;
 
         /// <summary>
         /// Store the graph nodes that are needed for processing the functional operation
@@ -64,17 +71,31 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <summary>
         /// Attempt to initialise the graph object for processing data
         /// </summary>
-        /// <param name="nodes">The collection of Node description elements that make up the graph that is to be processed</param>
+        /// <param name="graph">The description of the graph that is to be handled for processing</param>
         /// <param name="library">The node library that can be used to retrieve instances of the backing nodes required for operation</param>
         /// <param name="environmentVariables">The collection of environment variables that describe the operational state of the program</param>
         /// <returns>Returns true if at the surface level the graph is valid and can be operated</returns>
-        public bool TryInitialiseGraph(IList<NodeDescription> nodes,
+        public bool TryInitialiseGraph(GraphDescription graph,
                                        NodeLibrary library,
                                        Dictionary<string, string?> environmentVariables)
         {
-            return InitialiseGraphNodes(nodes, library) &&
+            return InitialiseGraphNodes(graph.Nodes ?? Array.Empty<NodeDescription>(), library) &&
                 IdentifyStartingValues(environmentVariables);
         }
+
+        /// <summary>
+        /// Handle the setup required to execute the graph asynchronously
+        /// </summary>
+        /// <param name="environmentVariables">The collection of assigned environment variables for processing</param>
+        /// <param name="cancellationToken">Cancellation token that can be used to control the execution of the process</param>
+        /// <returns>Returns the status code of the operation once it has finished running</returns>
+        public abstract ValueTask<int> EvaluateGraphAsync(Dictionary<string, string?> environmentVariables,
+                                                          CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Use the name of the graph for display purposes
+        /// </summary>
+        public override string ToString() => Name;
 
         //PROTECTED
 
@@ -82,9 +103,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// Create the graph with the required values
         /// </summary>
         /// <param name="graphName">The name that will be applied to the graph for display</param>
-        protected ProcessGraph(string graphName)
+        protected ProcessGraph(string graphName, NodeUsage validNodes)
         {
-            _graphName = graphName;
+            Name = graphName;
+            _validNodes = validNodes;
         }
 
         /// <summary>
@@ -111,14 +133,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     continue;
                 }
 
-                // Check that there is a type ID available
-                if (string.IsNullOrWhiteSpace(nodes[i].TypeID) == true)
-                {
-                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, no {nameof(NodeDescription.TypeID)} value could be found");
-                    success = false;
-                    continue;
-                }
-
                 // Check that the ID is unique and can be used
                 if (_nodeDescriptions.TryGetValue(nodes[i].ID!, out var previousNode) == true)
                 {
@@ -127,10 +141,34 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     continue;
                 }
 
+                // Check that there is a type ID available
+                if (string.IsNullOrWhiteSpace(nodes[i].TypeID) == true)
+                {
+                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, no {nameof(NodeDescription.TypeID)} value could be found");
+                    success = false;
+                    continue;
+                }
+
+                // Check that we can use a node of this type
+                if (library.TryGetNodeCharacteristics(nodes[i].TypeID!, out var nodeCharacteristics) == false)
+                {
+                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, the characteristics for Type ID '{nodes[i].TypeID}' couldn't be found");
+                    success = false;
+                    continue;
+                }
+
+                // Check that this node can be used on the graph
+                if ((nodeCharacteristics.UsageFlags & _validNodes) == 0)
+                {
+                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, the node Type ID '{nodes[i].TypeID}' is not valid for use in this graph");
+                    success = false;
+                    continue;
+                }
+
                 // Try to get the instance of the node that will be used
                 if (library.TryGetInstanceOfNode(nodes[i].TypeID!, out var nodeInstance) == false)
                 {
-                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, the Type ID '{nodes[i].TypeID}' couldn't be found");
+                    Logger.Error($"Failed when parsing the node '{nodes[i].Name}' ({nodes[i].ID}) at index {i}, an instance of Type ID '{nodes[i].TypeID}' couldn't be created");
                     success = false;
                     continue;
                 }
@@ -176,7 +214,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             // Find the traversal depth limit from the properties
             if (ArgumentResolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, environmentVariables, out int maxTraversalDepth) == false)
             {
-                Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} failed to resolve the maximum traversal depth from the environment variables, cannot continue");
+                Logger.Error($"[{nameof(ProcessGraph)}] {Name} failed to resolve the maximum traversal depth from the environment variables, cannot continue");
                 return -1;
             }
 
@@ -195,11 +233,12 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 // Retrieve the node instance that is to be processed
                 if (_graph.TryGetValue(activeNode.ID!, out var nodeInstance) == false)
                 {
-                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} failed to retrieve the node instance for '{activeNode.Name}' ({activeNode.ID}), cannot continue");
+                    Logger.Error($"[{nameof(ProcessGraph)}] {Name} failed to retrieve the node instance for '{activeNode.Name}' ({activeNode.ID}), cannot continue");
                     return 404;
                 }
 
                 // Find the collection of inputs needed for the node
+                _progressionBuffer.Add($"{activeNode.Name} ({activeNode.ID})");
                 nodeInputBuffer.Clear();
                 var nodeInputs = nodeInstance.GetInputProperties();
                 for (int i = 0; i < nodeInputs.Count; ++i)
@@ -210,7 +249,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     // Try to resolve the description into a value that can be assigned
                     if (ArgumentResolver.TryResolveDescription(inputDescriptor, nodeInputs[i], environmentVariables, runtimeVariables, out var resolvedInput) == false)
                     {
-                        Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}'");
+                        Logger.Error($"[{nameof(ProcessGraph)}] {Name} couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}'");
                         return 422;
                     }
 
@@ -226,14 +265,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 var nodeOutput = await nodeInstance.ProcessNodeResultAsync(nodeInputBuffer, cancellationToken);
                 if (cancellationToken.IsCancellationRequested == true)
                 {
-                    Logger.Warning($"[{nameof(ProcessGraph)}] {_graphName} operation was cancelled while processing node '{activeNode.Name}' ({activeNode.ID})");
+                    Logger.Warning($"[{nameof(ProcessGraph)}] {Name} operation was cancelled while processing node '{activeNode.Name}' ({activeNode.ID})");
                     return 499;
                 }
 
                 // If the process failed, we need to stop here
                 if (nodeOutput.IsError == true)
                 {
-                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID})\n{nodeOutput}");
+                    Logger.Error($"[{nameof(ProcessGraph)}] {Name} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID})\n{nodeOutput}");
                     return nodeOutput.ResultCode;
                 }
 
@@ -258,7 +297,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         // Check if there is an output value in the result
                         if (nodeOutput.Results.TryGetValue(nodeOutputs[i].Name, out var outputValue) == false)
                         {
-                            Logger.Warning($"[{nameof(ProcessGraph)}] {_graphName} couldn't find an output value for the property '{nodeOutputs[i]}' from node '{activeNode.Name}' ({activeNode.ID})");
+                            Logger.Warning($"[{nameof(ProcessGraph)}] {Name} couldn't find an output value for the property '{nodeOutputs[i]}' from node '{activeNode.Name}' ({activeNode.ID})");
                             continue;
                         }
 
@@ -282,7 +321,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 string nextNode = nodeOutput.NextNode ?? DefaultNextNodeKey;
                 if (activeNode.Connections.TryGetValue(nextNode, out var nextNodeId) == false)
                 {
-                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID}). Unable to find a matching connection for the selection case '{nextNode}'");
+                    Logger.Error($"[{nameof(ProcessGraph)}] {Name} encountered an error while processing node '{activeNode.Name}' ({activeNode.ID}). Unable to find a matching connection for the selection case '{nextNode}'");
                     break;
                 }
 
@@ -296,7 +335,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 // Try to find the node description that is to be processed next
                 if (_nodeDescriptions.TryGetValue(nextNodeId, out var nextActiveNode) == false)
                 {
-                    Logger.Error($"[{nameof(ProcessGraph)}] {_graphName} encountered an error while processing node '{activeNode}' ({activeNode.ID}). Selected output path was '{nextNode}' which was assigned the ID '{nextNodeId}' but no node in the graph with that ID could be found");
+                    Logger.Error($"[{nameof(ProcessGraph)}] {Name} encountered an error while processing node '{activeNode}' ({activeNode.ID}). Selected output path was '{nextNode}' which was assigned the ID '{nextNodeId}' but no node in the graph with that ID could be found");
                     break;
                 }
 
@@ -307,13 +346,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             // If we reached the upper limit, that's a problem
             if (steps == maxTraversalDepth)
             {
-                Logger.Error($"{_graphName} reached the maximum number of steps ({maxTraversalDepth}) while processing the request, failed to complete");
+                Logger.Error($"{Name} reached the maximum number of steps ({maxTraversalDepth}) while processing the request, failed to complete");
                 return -1;
             }
 
             // If we made it this far, we're good
             stopwatch.Stop();
-            Logger.Log($"{_graphName} completed execution after: {stopwatch.Elapsed}\n\t{string.Join("\n\t", _progressionBuffer.Select((v, i) => $"{i}.\t{v}"))}");
+            Logger.Log($"{Name} completed execution after: {stopwatch.Elapsed}\n\t{string.Join("\n\t", _progressionBuffer.Select((v, i) => $"{i}.\t{v}"))}");
             return 0;
         }
     }

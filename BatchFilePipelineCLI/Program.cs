@@ -6,7 +6,7 @@ using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Nodes;
-using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.Pipeline.Workflow;
 
 namespace BatchFilePipelineCLI
 {
@@ -114,12 +114,11 @@ namespace BatchFilePipelineCLI
             var environmentVariables = LoadEnvironmentVariables();
 
             // Combine all of the environment variable sources together for the final collection that will be used
-            var fullEnvironmentVariables = environmentVariables
+            var pipelineEnvironmentVariables = environmentVariables
                 .Concat(pipelineDescription.Environment)
-                .Concat(argumentVariables)
                 .ToDictionary(x => x.Key, x => x.Value);
-            ParseLoggerArguments(fullEnvironmentVariables);
-            Logger.Log($"Complete Environment Variable Set ({fullEnvironmentVariables.Count}):\n\t{string.Join("\n\t", fullEnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
+            ParseLoggerArguments(pipelineEnvironmentVariables);
+            Logger.Log($"Pipeline Environment Variable Set ({pipelineEnvironmentVariables.Count}):\n\t{string.Join("\n\t", pipelineEnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
             // Try to load the library of nodes that are available for use in the pipeline
             var nodeLibrary = new NodeLibrary();
@@ -130,40 +129,16 @@ namespace BatchFilePipelineCLI
             }
             Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.TypeID).Select(x => $"{x.nodeType.FullName}\n\t\tID={x.characteristics.TypeID}\n\t\tUsage Flags={x.characteristics.UsageFlags}\n\t\tIs Shared={x.characteristics.IsShared}"))}");
 
-            // Create the graphs that will be used to process the required operations
-            PreProcessSupportGraph preProcess = new PreProcessSupportGraph();
-            MainProcessGraph mainProcess = new MainProcessGraph();
-            PostProcessSupportGraph postProcess = new PostProcessSupportGraph();
-
-            // Attempt to load the different workflows for use
-            bool loadedProcess = true;
-            if (preProcess.TryInitialiseGraph(pipelineDescription.Workflow.PreProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
+            // Create the workflow that will be processed to perform the operations required
+            Workflow workflow = new Workflow();
+            if (workflow.TryLoadFromDescription(pipelineDescription.Workflow, nodeLibrary, pipelineEnvironmentVariables, argumentVariables) == false)
             {
-                Logger.Error($"Failed to load the pre-process graph for the pipeline '{pipelineDescription.Name}'");
-                loadedProcess = false;
-            }
-            if (mainProcess.TryInitialiseGraph(pipelineDescription.Workflow.ProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
-            {
-                Logger.Error($"Failed to load the main process graph for the pipeline '{pipelineDescription.Name}'");
-                loadedProcess = false;
-            }
-            if (postProcess.TryInitialiseGraph(pipelineDescription.Workflow.PostProcessGraph ?? Array.Empty<NodeDescription>(), nodeLibrary, fullEnvironmentVariables) == false)
-            {
-                Logger.Error($"Failed to load the post-process graph for the pipeline '{pipelineDescription.Name}'");
-                loadedProcess = false;
-            }
-            if (loadedProcess == false)
-            {
+                Logger.Error($"Failed to load the workflow graphs for processing. Resolve errors and try again");
                 return -1;
             }
 
-            // We made it this far, we can try to run the graphs
-            // TODO:
-
-            return await preProcess.TestProcessGraphAsync(fullEnvironmentVariables, cancellationToken);
-
-            // If we got this far, we're good
-            return 0;
+            // Execute the workflow to process the required elements
+            return await workflow.ExecuteAsync(cancellationToken);
         }
 
         /// <summary>

@@ -111,6 +111,17 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         }
 
         /// <summary>
+        /// Try to retrieve the characteristics for the Node with the specified type ID
+        /// </summary>
+        /// <param name="typeId">The unique ID of the Nodes that is to be retrieved</param>
+        /// <param name="characteristics">Passes out the instance of the characteristics when a matching node is found for processing</param>
+        /// <returns>Returns true if node characteristics with the specified ID can be found</returns>
+        public bool TryGetNodeCharacteristics(string typeId, [NotNullWhen(true)] out PipelineNodeAttribute? characteristics)
+        {
+            return _nodeCharacteristics.TryGetValue(typeId, out characteristics);
+        }
+
+        /// <summary>
         /// Try to get an instance of the Node with the specified type
         /// </summary>
         /// <param name="typeId">The unique ID of the Node that is to be retrieved</param>
