@@ -54,5 +54,13 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// </summary>
         [XmlElement("Connections")]
         public KeyValueSection Connections { get; set; } = new();
+
+        /*----------Functions----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// Format the name and ID of this node for output display
+        /// </summary>
+        public override string ToString() => $"{Name} ({ID})";
     }
 }

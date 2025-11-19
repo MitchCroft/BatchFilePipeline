@@ -1,6 +1,8 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.Pipeline.Workflow;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
     /// Define a Node that can be used to get the file extension from a specified file path
@@ -54,14 +56,14 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// <param name="inputs">The collection of inputs that have been described for this node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
                                                             CancellationToken cancellationToken)
         {
             // Process the string format operation
             try
             {
                 string filePath = (string)inputs[_pathProperty.Name]!;
-                return ValueTask.FromResult(new NodeOutput
+                return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
                     {
@@ -71,7 +73,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
             }
 
             // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new NodeOutput(ex)); }
+            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
         }
     }
 }

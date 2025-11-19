@@ -35,7 +35,7 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determine from the available information for use</param>
         /// <returns>Returns true if the value is valid for use</returns>
         public static bool TryResolveEnvironmentVariable(Property property,
-                                                         Dictionary<string, string?> environmentVariables,
+                                                         IDictionary<string, string?> environmentVariables,
                                                          [MaybeNull] out object? value)
         {
             // If there is no environment variable with the name, we can try to use the default value
@@ -66,7 +66,7 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determine from the available information for use</param>
         /// <returns>Returns true if the value is valid for use</returns>
         public static bool TryResolveEnvironmentVariable<T>(Property property,
-                                                            Dictionary<string, string?> environmentVariables,
+                                                            IDictionary<string, string?> environmentVariables,
                                                             [MaybeNull] out T? value)
         {
             // If there is no environment variable with the name, we can try to use the default value
@@ -114,11 +114,11 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="runtimeVariables">The collection of runtime variables that will be used for processing</param>
         /// <param name="value">Passes out the value that was determined from the descriptor that can be used</param>
         /// <returns>Returns true if the descriptor could be interpreted properly and the output value is an accurate representation</returns>
-        public static bool TryResolveDescription(string? descriptor,
-                                                 Property property,
-                                                 Dictionary<string, string?> environmentVariables,
-                                                 Dictionary<string, object?> runtimeVariables,
-                                                 [MaybeNull] out object? value)
+        public static bool TryResolveDescriptor(string? descriptor,
+                                                Property property,
+                                                IDictionary<string, string?> environmentVariables,
+                                                IDictionary<string, object?> runtimeVariables,
+                                                [MaybeNull] out object? value)
         {
             // We need a buffer to process the data that is contained
             var buffer = RentBuffer();
@@ -212,6 +212,105 @@ namespace BatchFilePipelineCLI.DynamicProperties
             }
         }
 
+        /// <summary>
+        /// Handle the process of resolving a dynamic argument value for use in the pipeline without a type guide
+        /// </summary>
+        /// <param name="descriptor">The description of the value within the process that is to be interpretted</param>
+        /// <param name="environmentVariables">The collection of environment variables that will be used for processing</param>
+        /// <param name="runtimeVariables">The collection of runtime variables that will be used for processing</param>
+        /// <param name="value">Passes out the value that was determined from the descriptor that can be used</param>
+        /// <returns>Returns true if the descriptor could be interpreted properly</returns>
+        /// <remarks>
+        /// This function doesn't provide any type validation or verification, the output type is not controlled for at all.
+        /// 
+        /// If the descriptor is just for a single runtime variable, the output type will have the same output.
+        /// Any composites or environment variables will return a string
+        /// </remarks>
+        public static bool TryResolveLooseDescriptor(string? descriptor,
+                                                     IDictionary<string, string?> environmentVariables,
+                                                     IDictionary<string, object?> runtimeVariables,
+                                                     [MaybeNull] out object? value)
+        {
+            // We need a buffer to process the data that is contained
+            var buffer = RentBuffer();
+            try
+            {
+                // Attempt to tokenise the descriptor into what we need
+                if (TokeniseDescriptor(descriptor, buffer) == false)
+                {
+                    value = null;
+                    return false;
+                }
+
+                // Count the stats for the buffer
+                int variables = buffer.Sum(x => x.isVariable ? 1 : 0);
+                int sections = buffer.Sum(x => x.IsEmpty == false && x.isVariable == false ? 1 : 0);
+
+                // If it's empty, there isn't anything to figure out
+                if (variables == 0 && sections == 0)
+                {
+                    value = null;
+                    return false;
+                }
+
+                // If we only have a variable, we can try to retrieve the value for use
+                if (variables == 1 && sections == 0)
+                {
+                    // Find the variable that is needed
+                    string variableName = buffer.FirstOrDefault(x => x.isVariable == true).Value;
+
+                    // Try and resolve the variable that is needed
+                    return TryResolveVariable(variableName, environmentVariables, runtimeVariables, out value) != Resolution.Failed;
+                }
+
+                // If we only have a single static section, we can just pass that back
+                if (variables == 0 && sections == 1)
+                {
+                    value = buffer.FirstOrDefault(x => x.isVariable == false && x.IsEmpty == false).Value;
+                    return true;
+                }
+
+                // Everything else, we just try to stick it together and use the resulting string
+                int failedResolutions = 0;
+                string combinedValue = string.Join(string.Empty, buffer.Select(x =>
+                {
+                    // If this isn't a variable, juse use the static value
+                    if (x.isVariable == false)
+                    {
+                        return x.Value;
+                    }
+
+                    // Try and resolve the variable that is needed
+                    var resolution = TryResolveVariable(x.Value, environmentVariables, runtimeVariables, out var resolvedValue);
+                    if (resolution == Resolution.Failed)
+                    {
+                        ++failedResolutions;
+                        return $"[>{x.Value}<]";
+                    }
+
+                    // Otherwise, we need to try and embed the value as a string
+                    return resolvedValue?.ToString() ?? Null;
+                }));
+
+                // If anything went wrong, that's a problem
+                if (failedResolutions > 0)
+                {
+                    value = null;
+                    return false;
+                }
+
+                // Hopefully this value is good enough for use
+                value = combinedValue;
+                return true;
+            }
+
+            // Make sure the buffer goes back
+            finally
+            {
+                ReturnBuffer(buffer);
+            }
+        }
+
         //PRIVATE
 
         /// <summary>
@@ -292,8 +391,8 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determined from the descriptor that can be used</param>
         /// <returns>Returns true if the variable could be resolved from the available information</returns>
         private static Resolution TryResolveVariable(string variable,
-                                                     Dictionary<string, string?> environmentVariables,
-                                                     Dictionary<string, object?> runtimeVariables,
+                                                     IDictionary<string, string?> environmentVariables,
+                                                     IDictionary<string, object?> runtimeVariables,
                                                      [MaybeNull] out object? value)
         {
             // First place to look is the runtime variables

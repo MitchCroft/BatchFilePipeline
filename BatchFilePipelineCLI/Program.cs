@@ -5,7 +5,7 @@ using DotNetEnv;
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
-using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow;
 using BatchFilePipelineCLI.DynamicProperties;
 

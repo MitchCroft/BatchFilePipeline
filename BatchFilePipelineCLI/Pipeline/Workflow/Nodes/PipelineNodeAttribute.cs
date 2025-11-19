@@ -1,6 +1,6 @@
 ﻿using BatchFilePipelineCLI.Utility.Preserve;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
     /// <summary>
     /// Mark a <see cref="IPipelineNode"/> implementing object with the information required for construction

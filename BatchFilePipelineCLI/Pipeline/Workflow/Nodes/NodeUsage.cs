@@ -1,4 +1,4 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Nodes
+﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
     /// <summary>
     /// Define flags for where in the workflow the node can be used for processing

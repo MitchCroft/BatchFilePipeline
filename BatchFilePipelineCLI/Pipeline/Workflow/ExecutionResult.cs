@@ -1,9 +1,9 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Nodes
+﻿namespace BatchFilePipelineCLI.Pipeline.Workflow
 {
     /// <summary>
-    /// Define the result of a Node being run and the output of the process
+    /// Define the result of a process being run and the output of the process
     /// </summary>
-    public readonly struct NodeOutput
+    public readonly struct ExecutionResult
     {
         /*----------Variables----------*/
         //PUBLIC
@@ -22,7 +22,7 @@
         public readonly string DetailMessage;
 
         /// <summary>
-        /// The collection of output results from the node processing when successful
+        /// The collection of output results from the processing when successful
         /// </summary>
         public readonly IDictionary<string, object?>? Results;
 
@@ -32,7 +32,7 @@
         /// <remarks>
         /// For example, an Evaluation Node would return True or False depending on the condition
         /// </remarks>
-        public readonly string? NextNode;
+        public readonly string? Next;
 
         /*----------Properties----------*/
         //PUBLIC
@@ -46,34 +46,34 @@
         //PUBLIC
 
         /// <summary>
-        /// Create a successful Node Output result object
+        /// Create a successful Output result object
         /// </summary>
-        /// <param name="results">The resulting information that came from the Node</param>
-        /// <param name="nextNode">[Optional] For Nodes with split paths, the name of the connection to be run next</param>
+        /// <param name="results">The resulting information that came from the process</param>
         /// <param name="additionalDetails">[Optional] Additional information about the process that was run for processing</param>
-        public NodeOutput(IDictionary<string, object?> results, string? nextNode = null, string? additionalDetails = null)
+        /// <param name="nextNode">[Optional] For Nodes with split paths, the name of the connection to be run next</param>
+        public ExecutionResult(IDictionary<string, object?> results, string? additionalDetails = null, string? nextNode = null)
         {
             ResultCode = 0;
             DetailMessage = additionalDetails ?? string.Empty;
             Results = results;
-            NextNode = nextNode;
+            Next = nextNode;
         }
 
         /// <summary>
-        /// Create the Node Output result from an exception that occurred
+        /// Create the Output result from an exception that occurred
         /// </summary>
         /// <param name="exception">The exception that resulted during processing</param>
-        public NodeOutput(Exception exception) :
+        public ExecutionResult(Exception exception) :
             this(exception.HResult, exception.ToString())
         {}
 
         /// <summary>
-        /// Create the Node Output with an error response setup
+        /// Create the Output with an error response setup
         /// </summary>
-        /// <param name="resultCode">The result code that will be used to represent the result of the Node</param>
+        /// <param name="resultCode">The result code that will be used to represent the result of the process</param>
         /// <param name="errorMessage">An additional error message that provides additional information</param>
         /// <exception cref="ArgumentException">Exception will be thrown if the successful return code is used</exception>
-        public NodeOutput(int resultCode, string errorMessage)
+        public ExecutionResult(int resultCode, string errorMessage)
         {
             if (resultCode == 0)
             {
@@ -82,7 +82,7 @@
             ResultCode = resultCode;
             DetailMessage = errorMessage;
             Results = null;
-            NextNode = null;
+            Next = null;
         }
 
         /// <summary>

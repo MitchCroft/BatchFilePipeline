@@ -1,36 +1,43 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
-    /// Node that can be used to get the name of a directory from a specified path
+    /// Define a Node that can be used to combine multiple path segments into a single path
     /// </summary>
-    [PipelineNode(nameof(GetDirectoryNameNode), NodeUsage.All)]
-    internal sealed class GetDirectoryNameNode : IPipelineNode
+    [PipelineNode(nameof(CombinePathNode), NodeUsage.All)]
+    internal sealed class CombinePathNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// We need to get the path of the file that is to be processed
+        /// We will need to get the different path segments that are to be combined
         /// </summary>
-        private readonly Property _pathProperty = Property.Create
+        private readonly Property _firstPathProperty = Property.Create
         (
-            "FilePath",
-            "The full path to the file from which the directory name is to be extracted",
+            "LeftPath",
+            "The first segment of the path that is to be combined",
             typeof(string),
-            example: "Path/To/File/Example.txt"
+            "Parent/Directory/"
+        );
+        private readonly Property _secondPathProperty = Property.Create
+        (
+            "RightPath",
+            "The second segment of the path that is to be combined",
+            typeof(string),
+            "Child/Directory/File.txt"
         );
 
         /// <summary>
-        /// Defines the property that will be used as an output of the node for use in later stages
+        /// We will produce the single combined path as an output
         /// </summary>
         private readonly Property _outputProperty = Property.Create
         (
             "Output",
-            "The string value of the directory path from the file",
+            "The resulting combined path from the provided segments",
             typeof(string),
-            example: "Path/To/File"
+            "Parent/Directory/Child/Directory/File.txt"
         );
 
         /*----------Functions----------*/
@@ -40,7 +47,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_pathProperty];
+        public IList<Property> GetInputProperties() => [_firstPathProperty, _secondPathProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
@@ -54,24 +61,25 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// <param name="inputs">The collection of inputs that have been described for this node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
                                                             CancellationToken cancellationToken)
         {
             // Process the string format operation
             try
             {
-                string filePath = (string)inputs[_pathProperty.Name]!;
-                return ValueTask.FromResult(new NodeOutput
+                string firstPath = (string)inputs[_firstPathProperty.Name]!;
+                string secondPath = (string)inputs[_secondPathProperty.Name]!;
+                return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
                     {
-                        { _outputProperty.Name, Path.GetDirectoryName(filePath) }
+                        { _outputProperty.Name, Path.Combine(firstPath, secondPath) }
                     }
                 ));
             }
 
             // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new NodeOutput(ex)); }
+            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
         }
     }
 }

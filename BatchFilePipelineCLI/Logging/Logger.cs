@@ -78,6 +78,12 @@
         public static void Log(object message) => LogMessage(message, LogType.Info);
 
         /// <summary>
+        /// Log a success message to the output
+        /// </summary>
+        /// <param name="message">The element that is to be logged for processing</param>
+        public static void Success(object message) => LogMessage(message, LogType.Success);
+
+        /// <summary>
         /// Log a warning message to the output
         /// </summary>
         /// <param name="message">The element that is to be logged for processing</param>

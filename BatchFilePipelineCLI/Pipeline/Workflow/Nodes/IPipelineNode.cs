@@ -1,6 +1,7 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.Pipeline.Workflow;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
     /// <summary>
     /// Defines the interface for a node element that can exist in a workflow and be used to perform an action
@@ -28,7 +29,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
         /// <param name="inputs">The collection of inputs that have been described for this node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
-                                                            CancellationToken cancellationToken);
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
+                                                                 CancellationToken cancellationToken);
     }
 }

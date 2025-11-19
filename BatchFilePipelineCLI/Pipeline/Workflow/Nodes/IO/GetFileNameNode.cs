@@ -1,43 +1,44 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.Pipeline.Workflow;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
-    /// Define a Node that can be used to combine multiple path segments into a single path
+    /// A Node that can be used to retrieve the file name from a specified path
     /// </summary>
-    [PipelineNode(nameof(CombinePathNode), NodeUsage.All)]
-    internal sealed class CombinePathNode : IPipelineNode
+    [PipelineNode(nameof(GetFileNameNode), NodeUsage.All)]
+    internal sealed class GetFileNameNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// We will need to get the different path segments that are to be combined
+        /// We need to get the path of the file that is to be processed
         /// </summary>
-        private readonly Property _firstPathProperty = Property.Create
+        private readonly Property _pathProperty = Property.Create
         (
-            "LeftPath",
-            "The first segment of the path that is to be combined",
+            "FilePath",
+            "The full path to the file from which the file name is to be extracted",
             typeof(string),
-            "Parent/Directory/"
+            example: "Path/To/File/Example.txt"
         );
-        private readonly Property _secondPathProperty = Property.Create
+        private readonly Property _includeExtension = Property.Create
         (
-            "RightPath",
-            "The second segment of the path that is to be combined",
-            typeof(string),
-            "Child/Directory/File.txt"
+            "IncludeExtension",
+            "Flags if the file extension should be included in the resulting file name",
+            defaultValue: true
         );
 
         /// <summary>
-        /// We will produce the single combined path as an output
+        /// Defines the property that will be used as an output of the node for use in later stages
         /// </summary>
         private readonly Property _outputProperty = Property.Create
         (
             "Output",
-            "The resulting combined path from the provided segments",
+            "The string value that contains the formatted DateTime result",
             typeof(string),
-            "Parent/Directory/Child/Directory/File.txt"
+            example: "Example.txt"
         );
 
         /*----------Functions----------*/
@@ -47,7 +48,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_firstPathProperty, _secondPathProperty];
+        public IList<Property> GetInputProperties() => [_pathProperty, _includeExtension];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
@@ -61,25 +62,25 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// <param name="inputs">The collection of inputs that have been described for this node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<NodeOutput> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IDictionary<string, object?> inputs,
                                                             CancellationToken cancellationToken)
         {
             // Process the string format operation
             try
             {
-                string firstPath = (string)inputs[_firstPathProperty.Name]!;
-                string secondPath = (string)inputs[_secondPathProperty.Name]!;
-                return ValueTask.FromResult(new NodeOutput
+                string filePath = (string)inputs[_pathProperty.Name]!;
+                bool includeExtension = (bool)inputs[_includeExtension.Name]!;
+                return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
                     {
-                        { _outputProperty.Name, Path.Combine(firstPath, secondPath) }
+                        { _outputProperty.Name, includeExtension ? Path.GetFileName(filePath) : Path.GetFileNameWithoutExtension(filePath) }
                     }
                 ));
             }
 
             // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new NodeOutput(ex)); }
+            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
         }
     }
 }

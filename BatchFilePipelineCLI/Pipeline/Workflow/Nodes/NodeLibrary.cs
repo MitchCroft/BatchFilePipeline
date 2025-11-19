@@ -1,9 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-
 using BatchFilePipelineCLI.Logging;
 
-namespace BatchFilePipelineCLI.Pipeline.Nodes
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
     /// <summary>
     /// Handle the creation of a workflow based on the supplied description
