@@ -36,10 +36,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow
                                            Dictionary<string, string?> argumentVariables)
         {
             // The workflow description will have the different graphs that we need to create and process
-            (GraphDescription graphDescription, IGraphProcess processor)[] graphProcessors =
+            (IGraphDescription graphDescription, IGraphProcess processor)[] graphProcessors =
             {
                 (workflowDescription.PreProcessGraph, new GenericGraphProcess(NodeUsage.PreProcess)),
-                (workflowDescription.ProcessGraph, new GenericGraphProcess(NodeUsage.Process)),
+                (workflowDescription.ProcessGraph, new MainGraphProcess()),
                 (workflowDescription.PostProcessGraph, new GenericGraphProcess(NodeUsage.PostProcess))
             };
 

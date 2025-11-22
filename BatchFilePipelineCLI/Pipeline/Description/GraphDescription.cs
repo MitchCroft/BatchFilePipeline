@@ -5,7 +5,7 @@ namespace BatchFilePipelineCLI.Pipeline.Description
     /// <summary>
     /// Information about a graph of nodes that can be processed during a workflow
     /// </summary>
-    public sealed class GraphDescription
+    public sealed class GraphDescription : IGraphDescription
     {
         /*----------Properties----------*/
         //PUBLIC

@@ -19,7 +19,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="environmentVariables">The collection of environment variables that are available for use</param>
         /// <param name="argumentVariables">The collection of command line argument variables that have been supplied to the program for use</param>
         /// <returns>Returns true if the graph process could be loaded properly for use</returns>
-        public bool TryLoadFromDescription(GraphDescription description,
+        public bool TryLoadFromDescription(IGraphDescription description,
                                            NodeLibrary library,
                                            IDictionary<string, string?> environmentVariables,
                                            IDictionary<string, string?> argumentVariables);

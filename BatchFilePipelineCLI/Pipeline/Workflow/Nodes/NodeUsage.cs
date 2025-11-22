@@ -14,21 +14,26 @@
         PreProcess      = 1 << 0,
 
         /// <summary>
+        /// Node is able to be used for identifying files that can be included in the workflow for processing
+        /// </summary>
+        Identification  = 1 << 1,
+
+        /// <summary>
         /// Node is able to be included in the main process step of the pipeline workflow
         /// </summary>
-        Process         = 1 << 1,
+        Process         = 1 << 2,
 
         /// <summary>
         /// Node is able to be included in the post-process step of the pipeline workflow
         /// </summary>
-        PostProcess     = 1 << 2,
+        PostProcess     = 1 << 3,
 
         /*----------Collections----------*/
 
         /// <summary>
         /// Node is able to be used in all stages of the pipeline workflow
         /// </summary>
-        All = PreProcess | Process | PostProcess,
+        All = PreProcess | Identification | Process | PostProcess,
 
         /// <summary>
         /// Node is able to be used in the support stages of the pipeline workflow

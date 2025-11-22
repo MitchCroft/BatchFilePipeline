@@ -8,6 +8,7 @@ using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow;
 using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.Utility.Cancellation;
 
 namespace BatchFilePipelineCLI
 {
@@ -69,14 +70,7 @@ namespace BatchFilePipelineCLI
         {
             // Ensure all the reflection types are marked as used
             TypePreserver.Init();
-
-            // This program will needs to be able to be closed when required
-            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-            Console.CancelKeyPress += (s, e) =>
-            {
-                cancellationTokenSource.Cancel();
-                e.Cancel = true;
-            };
+            CancellationStack.Register();
 
             // We can have a general catch all in case something goes wrong
             try
@@ -92,7 +86,8 @@ namespace BatchFilePipelineCLI
                 if (ArgumentResolver.TryResolveEnvironmentVariable(PIPELINE_ARGUMENT, argumentVariables, out string? pipelinePath) == true &&
                     string.IsNullOrWhiteSpace(pipelinePath) == false)
                 {
-                    return await ProcessPipelineAsync(pipelinePath, argumentVariables, cancellationTokenSource.Token);
+                    using var token = CancellationStack.PushSource();
+                    return await ProcessPipelineAsync(pipelinePath, argumentVariables, token);
                 }
 
                 // TODO: Other operation markers can be defined

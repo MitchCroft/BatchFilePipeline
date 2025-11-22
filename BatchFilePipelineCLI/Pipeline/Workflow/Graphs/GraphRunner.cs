@@ -1,10 +1,4 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {
@@ -35,6 +29,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             "The maximum number of node steps that can be made when processing a graph before the process is killed",
             defaultValue: 25
         );
+
+        /*----------Properties----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// The collection of environment variables that will be used when processing
+        /// </summary>
+        public IReadOnlyDictionary<string, string?> EnvironmentVariables => (IReadOnlyDictionary<string, string?>)_environmentVariables;
 
         /*----------Functions----------*/
         //PUBLIC
