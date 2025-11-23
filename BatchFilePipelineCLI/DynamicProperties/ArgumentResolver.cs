@@ -1,6 +1,7 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.TypeParsing;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace BatchFilePipelineCLI.DynamicProperties
 {
@@ -449,7 +450,7 @@ namespace BatchFilePipelineCLI.DynamicProperties
             {
                 try
                 {
-                    outputValue = Convert.ChangeType(convertibleValue, property.Type);
+                    outputValue = Convert.ChangeType(convertibleValue, property.Type, CultureInfo.InvariantCulture);
                     return true;
                 }
                 catch (Exception ex)

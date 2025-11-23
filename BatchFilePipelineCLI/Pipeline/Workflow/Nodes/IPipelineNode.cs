@@ -1,5 +1,4 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Pipeline.Workflow;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
