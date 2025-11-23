@@ -27,8 +27,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         public static bool TryBuildGraphRunner(GraphDescription description,
                                                NodeLibrary library,
                                                NodeUsage validNodes,
-                                               IDictionary<string, string?> environmentVariables,
-                                               IDictionary<string, string?> argumentVariables,
+                                               IReadOnlyDictionary<string, string?> environmentVariables,
+                                               IReadOnlyDictionary<string, string?> argumentVariables,
                                                [NotNullWhen(true)] out GraphRunner? graphRunner)
         {
             // Try to build the graph that will be processed

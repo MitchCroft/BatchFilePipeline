@@ -67,8 +67,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="maxTraversalDepth">The maximum number of steps that can be navigated on the graph before it is cancelled</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the execution of the process</param>
         /// <returns>Returns an output object that contains the result of the graph execution that was needed for processing</returns>
-        public async ValueTask<ExecutionResult> ExecuteGraphAsync(IDictionary<string, string?> environmentVariables,
-                                                                  IDictionary<string, object?> runtimeVariables,
+        public async ValueTask<ExecutionResult> ExecuteGraphAsync(IReadOnlyDictionary<string, string?> environmentVariables,
+                                                                  IReadOnlyDictionary<string, object?> runtimeVariables,
                                                                   int maxTraversalDepth,
                                                                   CancellationToken cancellationToken)
         {
@@ -76,6 +76,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             _progressionBuffer.Clear();
             Dictionary<string, object?> outputResults = new Dictionary<string, object?>();
             Dictionary<string, object?> nodeInputBuffer = new Dictionary<string, object?>();
+            Dictionary<string, object?> localScopeRuntime = new Dictionary<string, object?>(runtimeVariables);
 
             // Time the processing operation
             var stopwatch = Stopwatch.StartNew();
@@ -114,7 +115,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         foreach (var (name, descriptor) in activeNode.Inputs)
                         {
                             // Try to resolve the descriptor into a value that will be useful
-                            if (ArgumentResolver.TryResolveLooseDescriptor(descriptor, environmentVariables, runtimeVariables, out var resolvedInput) == false)
+                            if (ArgumentResolver.TryResolveLooseDescriptor(descriptor, environmentVariables, localScopeRuntime, out var resolvedInput) == false)
                             {
                                 return new ExecutionResult
                                 (
@@ -143,7 +144,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                             activeNode.Inputs.TryGetValue(nodeInputs[i].Name, out var inputDescriptor);
 
                             // Try to resolve the description into a value that can be assigned
-                            if (ArgumentResolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], environmentVariables, runtimeVariables, out var resolvedInput) == false)
+                            if (ArgumentResolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], environmentVariables, localScopeRuntime, out var resolvedInput) == false)
                             {
                                 return new ExecutionResult
                                 (
@@ -198,7 +199,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                 }
 
                                 // Assign the output to the runtime variable defined
-                                runtimeVariables[outputMapping] = outputValue;
+                                localScopeRuntime[outputMapping] = outputValue;
                             }
                         }
                         break;

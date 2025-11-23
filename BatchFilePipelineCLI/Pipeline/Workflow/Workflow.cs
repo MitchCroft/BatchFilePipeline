@@ -39,7 +39,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow
             (IGraphDescription graphDescription, IGraphProcess processor)[] graphProcessors =
             {
                 (workflowDescription.PreProcessGraph, new GenericGraphProcess(NodeUsage.PreProcess)),
-                (workflowDescription.ProcessGraph, new MainGraphProcess()),
+                (workflowDescription.MainGraph, new MainGraphProcess()),
                 (workflowDescription.PostProcessGraph, new GenericGraphProcess(NodeUsage.PostProcess))
             };
 

@@ -21,8 +21,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <returns>Returns true if the graph process could be loaded properly for use</returns>
         public bool TryLoadFromDescription(IGraphDescription description,
                                            NodeLibrary library,
-                                           IDictionary<string, string?> environmentVariables,
-                                           IDictionary<string, string?> argumentVariables);
+                                           IReadOnlyDictionary<string, string?> environmentVariables,
+                                           IReadOnlyDictionary<string, string?> argumentVariables);
 
         /// <summary>
         /// Handle the process of evaluating the defined graph with the specified values
@@ -30,7 +30,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="runtimeVariables">A collection of existing runtime variables that can be used for processing</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the result of the execution process</returns>
-        public ValueTask<ExecutionResult> EvaluateGraphAsync(IDictionary<string, object?> runtimeVariables,
+        public ValueTask<ExecutionResult> EvaluateGraphAsync(IReadOnlyDictionary<string, object?> runtimeVariables,
                                                              CancellationToken cancellationToken);
     }
 }

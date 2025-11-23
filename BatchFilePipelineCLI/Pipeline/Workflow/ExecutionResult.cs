@@ -24,7 +24,7 @@
         /// <summary>
         /// The collection of output results from the processing when successful
         /// </summary>
-        public readonly IDictionary<string, object?>? Results;
+        public readonly Dictionary<string, object?>? Results;
 
         /// <summary>
         /// For Nodes with split paths, the name of the connection to be run next
@@ -51,7 +51,7 @@
         /// <param name="results">The resulting information that came from the process</param>
         /// <param name="additionalDetails">[Optional] Additional information about the process that was run for processing</param>
         /// <param name="nextNode">[Optional] For Nodes with split paths, the name of the connection to be run next</param>
-        public ExecutionResult(IDictionary<string, object?> results, string? additionalDetails = null, string? nextNode = null)
+        public ExecutionResult(Dictionary<string, object?> results, string? additionalDetails = null, string? nextNode = null)
         {
             ResultCode = 0;
             DetailMessage = additionalDetails ?? string.Empty;

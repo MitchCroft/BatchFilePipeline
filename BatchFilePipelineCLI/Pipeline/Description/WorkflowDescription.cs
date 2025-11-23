@@ -19,8 +19,8 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <summary>
         /// The collection of graph elements that will be run over all identified files
         /// </summary>
-        [XmlElement("ProcessGraph")]
-        public MainGraphDescription ProcessGraph { get; set; } = new MainGraphDescription();
+        [XmlElement("MainGraph")]
+        public MainGraphDescription MainGraph { get; set; } = new MainGraphDescription();
 
         /// <summary>
         /// The graph elements that will be processed *once* after the main process is run for all file entries collected

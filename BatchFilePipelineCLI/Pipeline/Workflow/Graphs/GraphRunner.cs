@@ -59,11 +59,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="runtimeVariables">The collection of existing runtime variables that are available for use</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the result of the execution process</returns>
-        public async ValueTask<ExecutionResult> ExecuteGraphAsync(IDictionary<string, object?> runtimeVariables,
+        public async ValueTask<ExecutionResult> ExecuteGraphAsync(IReadOnlyDictionary<string, object?> runtimeVariables,
                                                                   CancellationToken cancellationToken)
         {
             // Try to resolve the traversal depth that will be used when running this graph
-            if (ArgumentResolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, _environmentVariables, out int maxTraversalDepth) == false)
+            if (ArgumentResolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, EnvironmentVariables, out int maxTraversalDepth) == false)
             {
                 return new ExecutionResult
                 (
@@ -73,7 +73,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             }
 
             // Process the graph result
-            return await _graph.ExecuteGraphAsync(_environmentVariables, runtimeVariables, maxTraversalDepth, cancellationToken);
+            return await _graph.ExecuteGraphAsync(EnvironmentVariables, runtimeVariables, maxTraversalDepth, cancellationToken);
         }
     }
 }

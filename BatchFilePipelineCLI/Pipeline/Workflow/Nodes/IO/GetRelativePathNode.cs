@@ -1,50 +1,43 @@
 ﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Pipeline.Workflow;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
-using System.Globalization;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
-    /// Define a Node that can be used to format a DateTime value into a specified string format
+    /// Define a node that can be used to calculate the relative path to another
     /// </summary>
-    [PipelineNode(nameof(FormatDateTimeNode), NodeUsage.All)]
-    internal sealed class FormatDateTimeNode : IPipelineNode
+    [PipelineNode(nameof(GetRelativePathNode), NodeUsage.All)]
+    internal sealed class GetRelativePathNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// The format string that will be used when processing the DateTime value
+        /// We will need the different input paths to be able to work out the relative path values
         /// </summary>
-        private readonly Property _formatStringProperty = Property.Create
+        private readonly Property _relativeToProperty = Property.Create
         (
-            "FormatString",
-            "The format string that will be used to format the DateTime value for use",
-            "yyyy-MM-dd HH:mm:ss",
-            example: "Custom DateTime format string, e.g. yyyy-MM-dd HH:mm:ss"
+            "RelativeTo",
+            "The source path the result should be relative to. This path is always considered to be a directory",
+            typeof(string),
+            "Directory/"
+        );
+        private readonly Property _pathProperty = Property.Create
+        (
+            "Path",
+            "The destination path",
+            typeof(string),
+            "Directory/SubDirectory/File.tmp"
         );
 
         /// <summary>
-        /// The DateTime property that is to be used within the formatting operation
-        /// </summary>
-        private readonly Property _dateTimeProperty = Property.Create
-        (
-            "DateTime",
-            "The DateTime value that is to be formatted",
-            () => DateTime.Now,
-            example: "Runtime DateTime value or as a string 11/17/2025 13:52:32"
-        );
-
-        /// <summary>
-        /// Defines the property that will be used as an output of the node for use in later stages
+        /// This will result in a single value that describes the relative path of the file
         /// </summary>
         private readonly Property _outputProperty = Property.Create
         (
             "Output",
-            "The string value that contains the formatted DateTime result",
+            "The relative path, or path if the paths don't share the same root",
             typeof(string),
-            example: "2025-11-17 13:52:32"
+            "SubDirectory/File.tmp"
         );
 
         /*----------Functions----------*/
@@ -54,13 +47,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_formatStringProperty, _dateTimeProperty];
+        public IList<Property> GetInputProperties() => [ _relativeToProperty, _pathProperty ];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => [_outputProperty];
+        public IList<Property> GetOutputProperties() => [ _outputProperty ];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -71,16 +64,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the string format operation
+            // Process the path identification of the operation
             try
             {
-                DateTime dateTime = (DateTime)inputs[_dateTimeProperty.Name]!;
-                string formatString = (string)inputs[_formatStringProperty.Name]!;
+                string relativeTo = (string)inputs[_relativeToProperty.Name]!;
+                string path = (string)inputs[_pathProperty.Name]!;
                 return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
                     {
-                        { _outputProperty.Name, dateTime.ToString(formatString, CultureInfo.InvariantCulture) }
+                        { _outputProperty.Name, Path.GetRelativePath(relativeTo, path) }
                     }
                 ));
             }

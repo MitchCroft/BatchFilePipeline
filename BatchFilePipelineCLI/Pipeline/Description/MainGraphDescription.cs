@@ -19,11 +19,13 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <summary>
         /// The graph elements that will be run to process the identification of different files that should be processed
         /// </summary>
+        [XmlElement("IdentificationGraph")]
         public GraphDescription IdentificationGraph { get; set; } = new GraphDescription();
 
         /// <summary>
         /// The graph elements that will be run to process the individual files that were identified as a part of the former stage
         /// </summary>
+        [XmlElement("ProcessGraph")]
         public GraphDescription ProcessGraph { get; set; } = new GraphDescription();
     }
 }

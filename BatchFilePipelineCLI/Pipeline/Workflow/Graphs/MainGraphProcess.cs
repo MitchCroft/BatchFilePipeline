@@ -4,6 +4,7 @@ using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.Extensions;
+using System.Collections;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {
@@ -13,6 +14,18 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
     internal sealed class MainGraphProcess : IGraphProcess
     {
         /*----------Variables----------*/
+        //CONST
+
+        /// <summary>
+        /// The name of the export property that is expected when processing the identification graph
+        /// </summary>
+        private const string IDENTIFIER_OUTPUT_PROPERTY = "Identifiers";
+
+        /// <summary>
+        /// The name that the current identifier value will be stored under for processing
+        /// </summary>
+        private const string CURRENT_IDENTIFIER_PROPERTY = "CurrentIdentifier";
+
         //PRIVATE
 
         /// <summary>
@@ -59,7 +72,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <summary>
         /// The collection of environment variabels that have been defined for this process
         /// </summary>
-        private IDictionary<string, string?>? _environmentVariables;
+        private IReadOnlyDictionary<string, string?>? _environmentVariables;
 
         /*----------Functions----------*/
         //PUBLIC
@@ -74,8 +87,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <returns>Returns true if the graph process could be loaded properly for use</returns>
         public bool TryLoadFromDescription(IGraphDescription description,
                                            NodeLibrary library,
-                                           IDictionary<string, string?> environmentVariables,
-                                           IDictionary<string, string?> argumentVariables)
+                                           IReadOnlyDictionary<string, string?> environmentVariables,
+                                           IReadOnlyDictionary<string, string?> argumentVariables)
         {
             // We need to of been given a main graph description object that we can use for processing
             if (description is not MainGraphDescription graphDescription)
@@ -97,7 +110,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="runtimeVariables">A collection of existing runtime variables that can be used for processing</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the result of the execution process</returns>
-        public async ValueTask<ExecutionResult> EvaluateGraphAsync(IDictionary<string, object?> runtimeVariables,
+        public async ValueTask<ExecutionResult> EvaluateGraphAsync(IReadOnlyDictionary<string, object?> runtimeVariables,
                                                                    CancellationToken cancellationToken)
         {
             // We need to have the graphs built for use
@@ -126,7 +139,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             Dictionary<string, object?> outputResults = new Dictionary<string, object?>();
 
             // We will manage this process as a separate, cancellable task that won't effect the flow of everything else
-            using (var token = CancellationStack.PushSource())
+            using (var token = CancellationStack.PushSource(cancellationToken))
             {
                 do
                 {
@@ -143,15 +156,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         return idOutput;
                     }
 
-                    // We are expecting an enumerable collection of strings as the identifiers of the files that need to be processed
-                    var identifiers = idOutput.Results?.Where(x => x.Value is IEnumerable<string>)
-                        .SelectMany(x => (IEnumerable<string>)x.Value!)
-                        .ToArray();
+                    Logger.Success($"[{nameof(MainGraphProcess)}] Finished running identification step");
+                    Logger.Log($"[{nameof(MainGraphProcess)}] {idOutput}{(idOutput.Results == null || idOutput.Results.Count == 0 ? string.Empty : $"\n\tReceived exported values:\n\t\t{string.Join("\n\t\t", idOutput.Results.Select(x => $"{x.Key}={x.Value}"))}")}");
 
-                    // If there are no identifiers, nothing we can do
-                    if (identifiers == null)
+                    // We're expecting to get a collection of elements in the specified output
+                    if (idOutput.Results == null ||
+                        idOutput.Results.TryGetValue(IDENTIFIER_OUTPUT_PROPERTY, out var outputIdentifiers) == false ||
+                        outputIdentifiers is not IEnumerable identifiers)
                     {
-                        Logger.Error($"[{nameof(MainGraphProcess)}] No identifier values were emitted from the identification stage, was expecting the output of IEnumerable<string> value for processing");
+                        Logger.Error($"[{nameof(MainGraphProcess)}] Expected the identifier graph to emit a collection of values under the '{IDENTIFIER_OUTPUT_PROPERTY}' property name");
                     }
 
                     // We have a set of the elements that need to be processed
@@ -163,10 +176,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                             try
                             {
                                 // We're going to need a new set of runtime variables for this entry
-                                Dictionary<string, object?> instancedRuntimeVariables = new Dictionary<string, object?>(runtimeVariables);
+                                Logger.Log($"[{nameof(MainGraphProcess)}] Starting to process '{id}'");
+                                Dictionary<string, object?> instancedRuntimeVariables = runtimeVariables.Merge(idOutput.Results);
 
                                 // Set the identifier that will be available for use in the process
-                                instancedRuntimeVariables["CurrentIdentifier"] = id;
+                                instancedRuntimeVariables[CURRENT_IDENTIFIER_PROPERTY] = id;
 
                                 // Process the graph for the identifier
                                 var processOutput = await _processGraphRunner.ExecuteGraphAsync(instancedRuntimeVariables, token);
@@ -184,7 +198,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                     continue;
                                 }
 
-                                Logger.Success($"[{nameof(MainGraphProcess)}] Processed: '{id}'\n{processOutput}");
+                                Logger.Success($"[{nameof(MainGraphProcess)}] Processed: '{id}'");
+                                Logger.Log($"[{nameof(MainGraphProcess)}] {processOutput}{(processOutput.Results == null || processOutput.Results.Count == 0 ? string.Empty : $"\n\tReceived exported values:\n\t\t{string.Join("\n\t\t", processOutput.Results.Select(x => $"{x.Key}={x.Value}"))}")}");
 
                                 // If there were output values, add them to the output
                                 if (processOutput.Results != null)
@@ -217,5 +232,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             // If we got this far, we're good
             return new ExecutionResult(outputResults);
         }
+
+        /// <summary>
+        /// Use the name of the type as the string description
+        /// </summary>
+        public override string ToString() => nameof(MainGraphProcess);
     }
 }

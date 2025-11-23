@@ -35,7 +35,7 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determine from the available information for use</param>
         /// <returns>Returns true if the value is valid for use</returns>
         public static bool TryResolveEnvironmentVariable(Property property,
-                                                         IDictionary<string, string?> environmentVariables,
+                                                         IReadOnlyDictionary<string, string?> environmentVariables,
                                                          [MaybeNull] out object? value)
         {
             // If there is no environment variable with the name, we can try to use the default value
@@ -66,7 +66,7 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determine from the available information for use</param>
         /// <returns>Returns true if the value is valid for use</returns>
         public static bool TryResolveEnvironmentVariable<T>(Property property,
-                                                            IDictionary<string, string?> environmentVariables,
+                                                            IReadOnlyDictionary<string, string?> environmentVariables,
                                                             [MaybeNull] out T? value)
         {
             // If there is no environment variable with the name, we can try to use the default value
@@ -116,8 +116,8 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <returns>Returns true if the descriptor could be interpreted properly and the output value is an accurate representation</returns>
         public static bool TryResolveDescriptor(string? descriptor,
                                                 Property property,
-                                                IDictionary<string, string?> environmentVariables,
-                                                IDictionary<string, object?> runtimeVariables,
+                                                IReadOnlyDictionary<string, string?> environmentVariables,
+                                                IReadOnlyDictionary<string, object?> runtimeVariables,
                                                 [MaybeNull] out object? value)
         {
             // We need a buffer to process the data that is contained
@@ -227,8 +227,8 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// Any composites or environment variables will return a string
         /// </remarks>
         public static bool TryResolveLooseDescriptor(string? descriptor,
-                                                     IDictionary<string, string?> environmentVariables,
-                                                     IDictionary<string, object?> runtimeVariables,
+                                                     IReadOnlyDictionary<string, string?> environmentVariables,
+                                                     IReadOnlyDictionary<string, object?> runtimeVariables,
                                                      [MaybeNull] out object? value)
         {
             // We need a buffer to process the data that is contained
@@ -391,8 +391,8 @@ namespace BatchFilePipelineCLI.DynamicProperties
         /// <param name="value">Passes out the value that was determined from the descriptor that can be used</param>
         /// <returns>Returns true if the variable could be resolved from the available information</returns>
         private static Resolution TryResolveVariable(string variable,
-                                                     IDictionary<string, string?> environmentVariables,
-                                                     IDictionary<string, object?> runtimeVariables,
+                                                     IReadOnlyDictionary<string, string?> environmentVariables,
+                                                     IReadOnlyDictionary<string, object?> runtimeVariables,
                                                      [MaybeNull] out object? value)
         {
             // First place to look is the runtime variables
