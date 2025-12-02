@@ -31,11 +31,18 @@ namespace BatchFilePipelineCLI.Pipeline.Description
             reader.ReadStartElement();
 
             // Read in all of the values that are required
-            while (reader.NodeType == XmlNodeType.Element)
+            while (reader.NodeType != XmlNodeType.EndElement)
             {
-                string key = reader.Name;
-                string value = reader.ReadElementContentAsString();
-                this[key] = value;
+                if (reader.NodeType == XmlNodeType.Element)
+                {
+                    string key = reader.Name;
+                    string value = reader.ReadElementContentAsString();
+                    this[key] = value;
+                } else
+                {
+                    // Skip anything that's not an element (comments, whitespace, etc.)
+                    reader.Read();
+                }
             }
 
             // Consume the closing tag element
