@@ -3,6 +3,7 @@ using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Utility.Cancellation;
+using BatchFilePipelineCLI.Utility.ExecutionState;
 using BatchFilePipelineCLI.Utility.Extensions;
 using System.Collections;
 
@@ -170,6 +171,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     // We have a set of the elements that need to be processed
                     else
                     {
+                        // We want to keep the PC running while this process is running
+                        using var stateMarker = new ExecutionStateMarker();
+
+                        // Handle all of the identifiers that were identified
                         foreach (var id in identifiers)
                         {
                             // Try to handle the processing of the identified elements
