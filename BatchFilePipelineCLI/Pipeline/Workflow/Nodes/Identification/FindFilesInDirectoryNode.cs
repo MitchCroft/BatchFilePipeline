@@ -73,14 +73,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Identification
             // Process the search operation to find the files that are needed
             try
             {
+                // Retrieve the properties that will be processed
                 string searchDirectory = (string)inputs[_searchDirectoryProperty.Name]!;
                 string searchPattern = (string)inputs[_searchPatternProperty.Name]!;
                 SearchOption searchOption = (SearchOption)inputs[_searchOptionProperty.Name]!;
+
+                // Find out how many filters there are that need processing
+                string[] filterSegments = searchPattern.Split('|', StringSplitOptions.RemoveEmptyEntries);
+
+                // Find the collection of files that need to be handled
                 return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
                     {
-                        { _outputProperty.Name, Directory.GetFiles(searchDirectory, searchPattern, searchOption) }
+                        { _outputProperty.Name, Enumerable.Range(0, filterSegments.Length).SelectMany(i => Directory.EnumerateFiles(searchDirectory, filterSegments[i], searchOption)) }
                     }
                 ));
             }
