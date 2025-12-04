@@ -6,7 +6,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Identification
     /// Define a node that can be used to search through directories for files that should be returned for processing
     /// </summary>
     [PipelineNode(nameof(FindFilesInDirectoryNode), NodeUsage.Identification)]
-    internal class FindFilesInDirectoryNode : IPipelineNode
+    internal sealed class FindFilesInDirectoryNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
