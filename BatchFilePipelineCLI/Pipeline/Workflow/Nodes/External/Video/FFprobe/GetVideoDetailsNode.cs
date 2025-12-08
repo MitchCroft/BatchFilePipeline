@@ -1,7 +1,7 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Logging;
+﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data.Streams;
+using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.External;
 using Newtonsoft.Json.Linq;
 

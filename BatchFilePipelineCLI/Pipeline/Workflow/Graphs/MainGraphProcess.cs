@@ -1,7 +1,8 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
+﻿using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
+using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using BatchFilePipelineCLI.Utility.Extensions;
@@ -122,16 +123,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             }
 
             // Look for the properties that will define how we operate this process
-            if (ArgumentResolver.TryResolveEnvironmentVariable(_watchProperty, _environmentVariables!, out bool watchFiles) == false)
+            if (Resolver.TryResolveEnvironmentVariable(_watchProperty, _environmentVariables!, out bool watchFiles) == false)
             {
                 Logger.Warning($"[{nameof(MainGraphProcess)}] Unable to resolve the environment variable '{_watchProperty}'");
             }
-            if (ArgumentResolver.TryResolveEnvironmentVariable(_sleepPeriodProperty, _environmentVariables!, out int sleepPeriod) == false)
+            if (Resolver.TryResolveEnvironmentVariable(_sleepPeriodProperty, _environmentVariables!, out int sleepPeriod) == false)
             {
                 sleepPeriod = (int)_sleepPeriodProperty.DefaultValue!;
                 Logger.Warning($"[{nameof(MainGraphProcess)}] Unabel to resolve the environment variable '{_sleepPeriodProperty}'");
             }
-            if (ArgumentResolver.TryResolveEnvironmentVariable(_propergateFailureProperty, _environmentVariables!, out bool propergateFailure) == false)
+            if (Resolver.TryResolveEnvironmentVariable(_propergateFailureProperty, _environmentVariables!, out bool propergateFailure) == false)
             {
                 Logger.Warning($"[{nameof(MainGraphProcess)}] Unabel to resolve the environment variable '{_propergateFailureProperty}'");
             }

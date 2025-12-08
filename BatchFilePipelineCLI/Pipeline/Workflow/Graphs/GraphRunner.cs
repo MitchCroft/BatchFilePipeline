@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
+﻿using BatchFilePipelineCLI.PropertyResolver;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {
@@ -63,7 +64,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                                                   CancellationToken cancellationToken)
         {
             // Try to resolve the traversal depth that will be used when running this graph
-            if (ArgumentResolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, EnvironmentVariables, out int maxTraversalDepth) == false)
+            if (Resolver.TryResolveEnvironmentVariable(_maxTraversalDepthProperty, EnvironmentVariables, out int maxTraversalDepth) == false)
             {
                 return new ExecutionResult
                 (

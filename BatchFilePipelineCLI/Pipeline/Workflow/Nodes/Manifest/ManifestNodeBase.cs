@@ -1,5 +1,5 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Logging;
+﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.PropertyResolver;
 using Newtonsoft.Json;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest

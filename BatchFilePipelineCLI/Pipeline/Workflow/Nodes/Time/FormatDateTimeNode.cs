@@ -1,6 +1,6 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Pipeline.Workflow;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
+using BatchFilePipelineCLI.PropertyResolver;
 using System.Globalization;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time

@@ -1,4 +1,4 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
+﻿using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
 {

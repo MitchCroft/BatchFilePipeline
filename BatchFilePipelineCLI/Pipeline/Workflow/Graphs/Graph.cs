@@ -1,7 +1,7 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
-using BatchFilePipelineCLI.Pipeline.Description;
+﻿using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility;
+using BatchFilePipelineCLI.PropertyResolver;
 using System.Diagnostics;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
@@ -115,7 +115,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         foreach (var (name, descriptor) in activeNode.Inputs)
                         {
                             // Try to resolve the descriptor into a value that will be useful
-                            if (ArgumentResolver.TryResolveLooseDescriptor(descriptor, environmentVariables, localScopeRuntime, out var resolvedInput) == false)
+                            if (Resolver.TryResolveLooseDescriptor(descriptor, environmentVariables, localScopeRuntime, out var resolvedInput) == false)
                             {
                                 return new ExecutionResult
                                 (
@@ -144,7 +144,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                             activeNode.Inputs.TryGetValue(nodeInputs[i].Name, out var inputDescriptor);
 
                             // Try to resolve the description into a value that can be assigned
-                            if (ArgumentResolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], environmentVariables, localScopeRuntime, out var resolvedInput) == false)
+                            if (Resolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], environmentVariables, localScopeRuntime, out var resolvedInput) == false)
                             {
                                 return new ExecutionResult
                                 (

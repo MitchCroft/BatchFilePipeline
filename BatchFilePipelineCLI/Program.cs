@@ -7,8 +7,9 @@ using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow;
-using BatchFilePipelineCLI.DynamicProperties;
+using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI
 {
@@ -83,7 +84,7 @@ namespace BatchFilePipelineCLI
                 Logger.Log($"Parsed argument variables ({argumentVariables.Count}):\n\t{string.Join("\n\t", argumentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
                 // How this program is going to operate will depend on the operation marker that is specified
-                if (ArgumentResolver.TryResolveEnvironmentVariable(PIPELINE_ARGUMENT, argumentVariables, out string? pipelinePath) == true &&
+                if (Resolver.TryResolveEnvironmentVariable(PIPELINE_ARGUMENT, argumentVariables, out string? pipelinePath) == true &&
                     string.IsNullOrWhiteSpace(pipelinePath) == false)
                 {
                     using var token = CancellationStack.PushSource();
@@ -220,7 +221,7 @@ namespace BatchFilePipelineCLI
         private static void ParseLoggerArguments(Dictionary<string, string?> arguments)
         {
             // Log file output
-            if (ArgumentResolver.TryResolveEnvironmentVariable(LOG_FILE_OUTPUT, arguments, out string? logFileOutput) == true &&
+            if (Resolver.TryResolveEnvironmentVariable(LOG_FILE_OUTPUT, arguments, out string? logFileOutput) == true &&
                 string.IsNullOrWhiteSpace(logFileOutput) == false)
             {
                 Logger.RemoveAll(x => x is FileLogOutput);
@@ -228,7 +229,7 @@ namespace BatchFilePipelineCLI
             }
 
             // Log Level
-            if (ArgumentResolver.TryResolveEnvironmentVariable(LOG_TYPE, arguments, out LogType logType) == false)
+            if (Resolver.TryResolveEnvironmentVariable(LOG_TYPE, arguments, out LogType logType) == false)
             {
                 return;
             }

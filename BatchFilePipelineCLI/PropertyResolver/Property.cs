@@ -1,4 +1,4 @@
-﻿namespace BatchFilePipelineCLI.DynamicProperties
+﻿namespace BatchFilePipelineCLI.PropertyResolver
 {
     /// <summary>
     /// A property that can be used to describe the different properties a Node can use

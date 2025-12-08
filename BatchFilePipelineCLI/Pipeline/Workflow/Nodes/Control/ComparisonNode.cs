@@ -1,4 +1,4 @@
-﻿using BatchFilePipelineCLI.DynamicProperties;
+﻿using BatchFilePipelineCLI.PropertyResolver;
 using System.Globalization;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
