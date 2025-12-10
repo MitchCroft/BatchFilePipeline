@@ -352,6 +352,42 @@ namespace BatchFilePipelineCLI.PropertyResolver
             return true;
         }
 
+        /// <summary>
+        /// Try to process the identification of a value from an object via reflection
+        /// </summary>
+        /// <param name="source">The source object that is being processed for value identification</param>
+        /// <param name="path">The '.' separated path of the fields/properties to be traversed</param>
+        /// <param name="value">Passes out the value of the determined property, if it can be found</param>
+        /// <returns>Returns true if the value is valid for use</returns>
+        public static bool TryResolveReflectiveProperty(object? source,
+                                                        string path,
+                                                        [MaybeNull] out object? value)
+        {
+            // If the source object is null, nothing we can do
+            if (source == null)
+            {
+                value = null;
+                return false;
+            }
+
+            // Find the property path that is to be processed
+            string[] segments = path.Split('.');
+
+            // Try to parse the value
+            for (int i = 0; i < segments.Length && source != null; ++i)
+            {
+                if (TryFindReflectiveValue(source, segments[i], out source) == false)
+                {
+                    value = null;
+                    return false;
+                }
+            }
+
+            // We have a value that can be used
+            value = source;
+            return true;
+        }
+
         //PRIVATE
 
         /// <summary>

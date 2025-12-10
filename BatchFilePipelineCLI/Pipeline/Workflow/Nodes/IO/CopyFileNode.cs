@@ -64,11 +64,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
             // Process the copy operation
             try
             {
+                // Get the elements that will need processing
+                string source = (string)inputs[_sourceProperty.Name]!;
+                string destination = (string)inputs [_destinationProperty.Name]!;
+                bool overwrite = (bool)inputs[_overwriteProperty.Name]!;
+
+                // Make sure the output exists
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+
+                // Copy the file over
                 File.Copy
                 (
-                    (string)inputs[_sourceProperty.Name]!,
-                    (string)inputs[_destinationProperty.Name]!,
-                    (bool)inputs[_overwriteProperty.Name]!
+                    source,
+                    destination,
+                    overwrite
                 );
                 return ValueTask.FromResult(new ExecutionResult
                 (

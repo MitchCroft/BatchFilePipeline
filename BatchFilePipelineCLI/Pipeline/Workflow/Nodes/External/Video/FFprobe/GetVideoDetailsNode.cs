@@ -80,6 +80,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe
                 (
                     executable,
                     $"-v quiet -print_format json -show_format -show_streams -show_chapters -show_data \"{target}\"",
+                    onError: msg => Logger.Error($"[{nameof(GetVideoDetailsNode)}] {msg}"),
                     cancellationToken: cancellationToken
                 );
                 if (cancellationToken.IsCancellationRequested == true)
@@ -92,6 +93,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe
                 {
                     return new ExecutionResult(result.ExitCode, result.ToString());
                 }
+
+                // We can just log the single output that was received
+                Logger.Log($"[{nameof(GetVideoDetailsNode)}] {result.StdOut}");
 
                 // We need to format the received data into a format that we can use with other nodes
                 return new ExecutionResult

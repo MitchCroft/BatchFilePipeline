@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.PropertyResolver;
+using BatchFilePipelineCLI.Utility.Comparison;
 using System.Globalization;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
@@ -85,29 +86,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
                 ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
 
                 // Perform the comparison
-                int intResult = leftValue.CompareTo(rightValue);
-                bool boolResult = false;
-                switch (mode)
-                {
-                    case ComparisonMode.Equal:
-                        boolResult = intResult == 0;
-                        break;
-                    case ComparisonMode.NotEqual:
-                        boolResult = intResult != 0;
-                        break;
-                    case ComparisonMode.LessThan:
-                        boolResult = intResult < 0;
-                        break;
-                    case ComparisonMode.LessThanOrEqual:
-                        boolResult = intResult <= 0;
-                        break;
-                    case ComparisonMode.GreaterThan:
-                        boolResult = intResult > 0;
-                        break;
-                    case ComparisonMode.GreaterThanOrEqual:
-                        boolResult = intResult >= 0;
-                        break;
-                }
+                bool boolResult = ComparisonUtility.Compare(leftValue, mode, rightValue, out int intResult);
                 return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>
@@ -117,27 +96,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
                     },
                     nextNode: boolResult.ToString(CultureInfo.InvariantCulture)
                 ));
-                
             }
 
             // If something went wrong, use the exception as the output result
             catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
-        }
-
-        /*----------Types----------*/
-        //PUBLIC
-
-        /// <summary>
-        /// The method of comparison that will be applied to the different elements that are being checked
-        /// </summary>
-        public enum ComparisonMode
-        {
-            Equal,
-            NotEqual,
-            LessThan,
-            LessThanOrEqual,
-            GreaterThan,
-            GreaterThanOrEqual,
         }
     }
 }
