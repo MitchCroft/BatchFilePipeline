@@ -3,40 +3,29 @@
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
-    /// A Node that can be used to retrieve the file name from a specified path
+    /// Handle the removal of a directory that is no longer needed during a workflow
     /// </summary>
-    [PipelineNode(nameof(GetFileNameNode), NodeUsage.All)]
-    internal sealed class GetFileNameNode : IPipelineNode
+    [PipelineNode(nameof(DeleteDirectoryNode), NodeUsage.All)]
+    internal sealed class DeleteDirectoryNode : IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// We need to get the path of the file that is to be processed
+        /// Define the properties that will be needed to operate the operation
         /// </summary>
-        private readonly Property _pathProperty = Property.Create
+        private readonly Property _targetDirProperty = Property.Create
         (
-            "FilePath",
-            "The full path to the file from which the file name is to be extracted",
+            "TargetDir",
+            "The path to the directory that is to be removed",
             typeof(string),
-            example: "Path/To/File/Example.txt"
+            "Path/To/Directory/"
         );
-        private readonly Property _includeExtension = Property.Create
+        private readonly Property _recursiveProperty = Property.Create
         (
-            "IncludeExtension",
-            "Flags if the file extension should be included in the resulting file name",
-            defaultValue: true
-        );
-
-        /// <summary>
-        /// Defines the property that will be used as an output of the node for use in later stages
-        /// </summary>
-        private readonly Property _outputProperty = Property.Create
-        (
-            "Output",
-            "The string value that contains the formatted DateTime result",
-            typeof(string),
-            example: "Example.txt"
+            "Recursive",
+            "Flags if the delete operation should be recursive, cleaning out all sub-directories and files as well",
+            true
         );
 
         /*----------Functions----------*/
@@ -46,13 +35,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_pathProperty, _includeExtension];
+        public IList<Property> GetInputProperties() => [_targetDirProperty, _recursiveProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => [_outputProperty];
+        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -63,17 +52,26 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the string format operation
+            // Process the copy operation
             try
             {
-                string filePath = (string)inputs[_pathProperty.Name]!;
-                bool includeExtension = (bool)inputs[_includeExtension.Name]!;
+                // Get the elements that will need processing
+                string targetDir = (string)inputs[_targetDirProperty.Name]!;
+                bool recursive = (bool)inputs[_recursiveProperty.Name]!;
+
+                // Copy the file over
+                try
+                {
+                    Directory.Delete
+                    (
+                        targetDir,
+                        recursive
+                    );
+                }
+                catch (DriveNotFoundException) {}
                 return ValueTask.FromResult(new ExecutionResult
                 (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, includeExtension ? Path.GetFileName(filePath) : Path.GetFileNameWithoutExtension(filePath) }
-                    }
+                    new Dictionary<string, object?>()
                 ));
             }
 

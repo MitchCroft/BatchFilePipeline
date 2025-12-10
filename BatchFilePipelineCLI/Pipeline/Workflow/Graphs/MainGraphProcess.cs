@@ -2,7 +2,6 @@
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
-using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using BatchFilePipelineCLI.Utility.Extensions;
@@ -140,6 +139,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             // There may be values that we need to export from this graph
             Dictionary<string, object?> outputResults = new Dictionary<string, object?>();
 
+            // Store a list of the elements that were processed
+            HashSet<object> identifiedElements = new();
+            List<object> completedSuccessfully = new();
+            List<object> completedFailure = new();
+
             // We will manage this process as a separate, cancellable task that won't effect the flow of everything else
             using (var token = CancellationStack.PushSource(cancellationToken))
             {
@@ -196,6 +200,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                 }
                                 if (processOutput.IsError == true)
                                 {
+                                    completedFailure.Add(id);
                                     Logger.Error($"[{nameof(MainGraphProcess)}] Encountered an error while processing '{id}'\n{processOutput}");
                                     if (propergateFailure == true)
                                     {
@@ -204,6 +209,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                     continue;
                                 }
 
+                                completedSuccessfully.Add(id);
                                 Logger.Success($"[{nameof(MainGraphProcess)}] Processed: '{id}'");
                                 Logger.Log($"[{nameof(MainGraphProcess)}] {processOutput}{(processOutput.Results == null || processOutput.Results.Count == 0 ? string.Empty : $"\n\tReceived exported values:\n\t\t{string.Join("\n\t\t", processOutput.Results.Select(x => $"{x.Key}={x.Value}"))}")}");
 
@@ -233,6 +239,29 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     }
 
                 } while (watchFiles == true && token.IsCancellationRequested == false);
+            }
+
+            // Update the results with completion state of the process
+            outputResults["ProcessedSuccessfully"] = completedFailure.Count == 0;
+
+            int total = completedSuccessfully.Count + completedFailure.Count;
+            if (total > 0)
+            {
+                float successRate = completedSuccessfully.Count / (float)total;
+                float failureRate = completedFailure.Count / (float)total;
+                string msg = $"[{nameof(MainGraphProcess)}]\n==================== RUN SUMMARY ====================\nSuccess {completedSuccessfully.Count}/{total} ({successRate:P})\n\t{string.Join("\n\t", completedSuccessfully)}\nFailed {completedFailure.Count}/{total} ({failureRate:P})\n\t{string.Join("\n\t", completedFailure)}\n=====================================================";
+                if (completedFailure.Count > 0)
+                {
+                    Logger.Error(msg);
+                }
+                else
+                {
+                    Logger.Log(msg);
+                }
+            }
+            else
+            {
+                Logger.Log($"[{nameof(MainGraphProcess)}] Unable to find any files to process");
             }
 
             // If we got this far, we're good

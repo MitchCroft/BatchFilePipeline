@@ -73,6 +73,7 @@ namespace BatchFilePipelineCLI.Utility.External
             // Try to start processing the external request
             try
             {
+                Logger.Log($"[{nameof(ExternalProcess)}] Running external process: {exe} {args}");
                 if (proc.Start() == false)
                 {
                     return new ProcessResult(-1, string.Empty, $"Failed to start process '{exe}'");

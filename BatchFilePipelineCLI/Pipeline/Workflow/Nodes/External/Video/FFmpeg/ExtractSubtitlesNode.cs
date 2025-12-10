@@ -1,5 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data.Streams;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.External;
 using System.Collections;
@@ -65,7 +66,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         private readonly Property _outputProperty = Property.Create
         (
             "Output",
-            "A collection of the file paths to the extracted subtitle file that can be used",
+            "A collection of the file paths to the extracted subtitle files that can be used",
             typeof(IEnumerable<string>)
         );
 
@@ -116,7 +117,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
                     }
 
                     // Get the output path for this stream
-                    string outputPath = GetOutputPath(storageDir, subtitleStream);
+                    string outputPath = Path.Combine(storageDir, subtitleStream.GetExportName());
                     Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
                     // We want to run the process to retrieve the subtitle data from the target
@@ -140,9 +141,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
                     }
 
                     // Check that we have a file in the expected location
-                    if (File.Exists(outputPath) == false)
+                    if (subtitleStream.TryFindSubtitleFile(storageDir, out _) == false)
                     {
-                        return new ExecutionResult(404, $"[{nameof(ExtractSubtitlesNode)}] Processed stream '{subtitleStream}' but was unable to generate an output file at '{outputPath}'");
+                        return new ExecutionResult(404, $"[{nameof(ExtractSubtitlesNode)}] Processed stream '{subtitleStream}' but was unable to generate an output file in '{storageDir}'");
                     }
 
                     // We have successfully extracted this subtitle file
@@ -165,45 +166,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
 
             // If something went wrong, use the exception as the output result
             catch (Exception ex) { return new ExecutionResult(ex); }
-        }
-
-        //PRIVATE
-
-        /// <summary>
-        /// Retrieve the output path for the specified subtitle stream
-        /// </summary>
-        /// <param name="storageDir">The storage location where the generated subtitle data should be located</param>
-        /// <param name="stream">The stream that is being processed</param>
-        /// <returns>Returns the complete path for the display</returns>
-        private static string GetOutputPath(string storageDir, SubtitleDataStream stream)
-        {
-            return Path.Combine(storageDir, $"Stream{stream.Index}{GetTypeExtension(stream.CodecName)}");
-        }
-
-        /// <summary>
-        /// Retrieve the expected subtitle extension type for the specified codec name
-        /// </summary>
-        /// <param name="codecName">The name of the codec used for the subtitle stream</param>
-        /// <returns>Returns the extension expected for the extracted codec data</returns>
-        /// <exception cref="ArgumentException">Thrown if there is an unknown or unexpected codec supplied</exception>
-        private static string GetTypeExtension(string? codecName)
-        {
-            if (string.IsNullOrWhiteSpace(codecName) == true)
-            {
-                throw new ArgumentNullException($"[{nameof(ExtractSubtitlesNode)}] No codec supplied for getting type extension");
-            }
-            return codecName switch
-            {
-                "subrip" => ".srt",
-                "ass" => ".ass",
-                "ssa" => ".ssa",
-                "webvtt" => ".vtt",
-                "text" => ".srt",
-                "dvd_subtitle" => ".sub",
-                "hdmv_pgs_subtitle" => ".sup",
-                "xsub" => ".sub",
-                _ => throw new ArgumentException($"[{nameof(ExtractSubtitlesNode)}] Unexpected subtitle code type '{codecName}'")
-            };
         }
     }
 }
