@@ -247,17 +247,18 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             int total = completedSuccessfully.Count + completedFailure.Count;
             if (total > 0)
             {
-                float successRate = completedSuccessfully.Count / (float)total;
-                float failureRate = completedFailure.Count / (float)total;
-                string msg = $"[{nameof(MainGraphProcess)}]\n==================== RUN SUMMARY ====================\nSuccess {completedSuccessfully.Count}/{total} ({successRate:P})\n\t{string.Join("\n\t", completedSuccessfully)}\nFailed {completedFailure.Count}/{total} ({failureRate:P})\n\t{string.Join("\n\t", completedFailure)}\n=====================================================";
+                Logger.Log($"[{nameof(MainGraphProcess)}]==================== RUN SUMMARY ====================");
+                if (completedSuccessfully.Count > 0)
+                {
+                    float successRate = completedSuccessfully.Count / (float)total;
+                    Logger.Success($"Success {completedSuccessfully.Count}/{total} ({successRate:P})\n\t{string.Join("\n\t", completedSuccessfully)}");
+                }
                 if (completedFailure.Count > 0)
                 {
-                    Logger.Error(msg);
+                    float failureRate = completedFailure.Count / (float)total; 
+                    Logger.Error($"Failed {completedFailure.Count}/{total} ({failureRate:P})\n\t{string.Join("\n\t", completedFailure)}");
                 }
-                else
-                {
-                    Logger.Log(msg);
-                }
+                Logger.Log("=====================================================");
             }
             else
             {
