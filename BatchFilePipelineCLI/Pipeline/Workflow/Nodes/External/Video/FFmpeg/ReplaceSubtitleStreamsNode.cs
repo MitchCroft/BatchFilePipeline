@@ -28,6 +28,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
             typeof(string),
             "Path/To/Executable/ffmpeg.exe"
         );
+        private readonly Property _sourcePathProperty = Property.Create
+        (
+            "SourcePath",
+            "The path to the source video file that is going to be replaced",
+            typeof(string),
+            "Path/To/Video.mp4"
+        );
         private readonly Property _fileInfoProperty = Property.Create
         (
             "TargetInfo",
@@ -69,7 +76,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => [_executableProperty, _fileInfoProperty, _streamsProperty, _externalSubtitleDirProperty, _subtitleFilesExtensionProperty, _outputPathProperty];
+        public IList<Property> GetInputProperties() => [_executableProperty, _sourcePathProperty, _fileInfoProperty, _streamsProperty, _externalSubtitleDirProperty, _subtitleFilesExtensionProperty, _outputPathProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
@@ -91,6 +98,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
             {
                 // Retrieve the information that will be used for processing
                 string executable = (string)inputs[_executableProperty.Name]!;
+                string sourcePath = (string)inputs[_sourcePathProperty.Name]!;
                 VideoDetails targetInfo = (VideoDetails)inputs[_fileInfoProperty.Name]!;
                 IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
                 string externalSubtitleDir = (string)inputs[_externalSubtitleDirProperty.Name]!;
@@ -98,7 +106,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
                 string outputPath = (string)inputs[_outputPathProperty.Name]!;
 
                 // We need to identify the collection of files that will be included in this remuxing
-                List<string> filesToCombine = new List<string> { targetInfo.Format.FileName! };
+                List<string> filesToCombine = new List<string> { sourcePath };
 
                 // Try to find the subtitle streams that we're going to be using in this process
                 List<(SubtitleDataStream stream, string subtitlePath)> subtitleStreams = new();
@@ -131,7 +139,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
                 argument.Append($"{string.Join(" ", preservedStreams.Select(x => $"-map 0:{x.Index}"))} ");
 
                 // We can copy in all of the new subtitle streams as well
-                argument.Append($"{string.Join(" ", subtitleStreams.Select((_, i) => $"-map {i + 1}:0"))} -c copy ");
+                argument.Append($"{string.Join(" ", subtitleStreams.Select((_, i) => $"-map {i + 1}:0"))} -c:v copy -c:a copy ");
+
+                // Count how many existing subtitle streams exist outside of those being replaced
+                int persistingSubtitlesCount = preservedStreams.Count(x => x.StreamType == StreamType.Subtitle);
+
+                // Force the encoding for the subtitle streams
+                argument.Append($"{string.Join(" ", subtitleStreams.Select((x, i) => $"-c:s:{persistingSubtitlesCount + i} {Path.GetExtension(x.subtitlePath).Substring(1)}"))} ");
 
                 // We can add all of the meta data that did exist on the previous streams
                 var metaDataInserts = subtitleStreams
