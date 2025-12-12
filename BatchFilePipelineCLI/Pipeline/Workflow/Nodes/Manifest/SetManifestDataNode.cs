@@ -60,29 +60,22 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
         public override ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                           CancellationToken cancellationToken)
         {
-            // Process the incoming data to adjust the required information
-            try
+            // Get the values that will be needed
+            string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
+            string identifier = (string)inputs[_identifierProperty.Name]!;
+            string key = (string)inputs[_keyProperty.Name]!;
+            string value = (string)inputs[_valueProperty.Name]!;
+
+            // Update the manifest data
+            var manifest = ReadManifestData(manifestPath);
+            if (manifest.Data.TryGetValue(identifier, out var metaData) == false)
             {
-                // Get the values that will be needed
-                string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
-                string identifier = (string)inputs[_identifierProperty.Name]!;
-                string key = (string)inputs[_keyProperty.Name]!;
-                string value = (string)inputs[_valueProperty.Name]!;
-
-                // Update the manifest data
-                var manifest = ReadManifestData(manifestPath);
-                if (manifest.Data.TryGetValue(identifier, out var metaData) == false)
-                {
-                    metaData =
-                    manifest.Data[identifier] = new Dictionary<string, string>(1);
-                }
-                metaData[key] = value;
-                WriteManifestData(manifestPath, manifest);
-                return ValueTask.FromResult(new ExecutionResult(new Dictionary<string, object?>()));
+                metaData =
+                manifest.Data[identifier] = new Dictionary<string, string>(1);
             }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            metaData[key] = value;
+            WriteManifestData(manifestPath, manifest);
+            return ValueTask.FromResult(new ExecutionResult());
         }
     }
 }

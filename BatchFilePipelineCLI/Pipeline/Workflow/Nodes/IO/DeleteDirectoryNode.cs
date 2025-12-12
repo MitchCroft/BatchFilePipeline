@@ -52,31 +52,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the copy operation
+            // Get the elements that will need processing
+            string targetDir = (string)inputs[_targetDirProperty.Name]!;
+            bool recursive = (bool)inputs[_recursiveProperty.Name]!;
+
+            // Copy the file over
             try
             {
-                // Get the elements that will need processing
-                string targetDir = (string)inputs[_targetDirProperty.Name]!;
-                bool recursive = (bool)inputs[_recursiveProperty.Name]!;
-
-                // Copy the file over
-                try
-                {
-                    Directory.Delete
-                    (
-                        targetDir,
-                        recursive
-                    );
-                }
-                catch (DirectoryNotFoundException) {}
-                return ValueTask.FromResult(new ExecutionResult
+                Directory.Delete
                 (
-                    new Dictionary<string, object?>()
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+                    targetDir,
+                    recursive
+                );
+            } catch (DirectoryNotFoundException) { }
+            return ValueTask.FromResult(new ExecutionResult());
         }
     }
 }

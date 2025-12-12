@@ -162,7 +162,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         ////////////////////////////////////////////////////////////////////////////////////////////////////
 
                         // We can process the node operation and receive the outputs that need to be handled
-                        nodeOutput = await nodeInstance.ProcessNodeResultAsync(nodeInputBuffer, cancellationToken);
+                        try
+                        {
+                            nodeOutput = await nodeInstance.ProcessNodeResultAsync(nodeInputBuffer, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            nodeOutput = new ExecutionResult(new Exception($"[{nameof(Graph)}] {activeNode}", ex));
+                        }
                         if (cancellationToken.IsCancellationRequested == true)
                         {
                             return new ExecutionResult(new TaskCanceledException($"[{nameof(Graph)}] {activeNode}"));

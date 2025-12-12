@@ -59,32 +59,22 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the copy operation
-            try
-            {
-                // Get the elements that will need processing
-                string source = (string)inputs[_sourceProperty.Name]!;
-                string destination = (string)inputs[_destinationProperty.Name]!;
-                bool overwrite = (bool)inputs[_overwriteProperty.Name]!;
+            // Get the elements that will need processing
+            string source = (string)inputs[_sourceProperty.Name]!;
+            string destination = (string)inputs[_destinationProperty.Name]!;
+            bool overwrite = (bool)inputs[_overwriteProperty.Name]!;
 
-                // Make sure the output exists
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            // Make sure the output exists
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
 
-                // Copy the file over
-                File.Move
-                (
-                    source,
-                    destination,
-                    overwrite
-                );
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>()
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Copy the file over
+            File.Move
+            (
+                source,
+                destination,
+                overwrite
+            );
+            return ValueTask.FromResult(new ExecutionResult());
         }
     }
 }

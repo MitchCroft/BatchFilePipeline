@@ -84,34 +84,27 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Linq
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Try to perform the filter operation on the required elements
-            try
-            {
-                // Retrieve the values that will be used for processing
-                IEnumerable collection = (IEnumerable)inputs[_collectionProperty.Name]!;
-                string subValuePath = (string)inputs[_subValueProperty.Name]!;
-                object filterValue = (object)inputs[_filterProperty.Name]!;
-                ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
-                bool resolve = (bool)inputs[_resolveProperty.Name]!;
+            // Retrieve the values that will be used for processing
+            IEnumerable collection = (IEnumerable)inputs[_collectionProperty.Name]!;
+            string subValuePath = (string)inputs[_subValueProperty.Name]!;
+            object filterValue = (object)inputs[_filterProperty.Name]!;
+            ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
+            bool resolve = (bool)inputs[_resolveProperty.Name]!;
 
-                // Check if the filter is comparable for processing
-                IEnumerable? outputValue = (filterValue is IComparable comparableFilter ?
-                    FilterMaybeComparable(collection, mode, subValuePath, comparableFilter) :
-                    FilterNotComparable(collection, mode, subValuePath, filterValue)
-                );
+            // Check if the filter is comparable for processing
+            IEnumerable? outputValue = (filterValue is IComparable comparableFilter ?
+                FilterMaybeComparable(collection, mode, subValuePath, comparableFilter) :
+                FilterNotComparable(collection, mode, subValuePath, filterValue)
+            );
 
-                // Create the output result that will be used
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, resolve ? outputValue.ToList() : outputValue }
-                    }
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Create the output result that will be used
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, resolve ? outputValue.ToList() : outputValue }
+                }
+            ));
         }
 
         //PRIVATE

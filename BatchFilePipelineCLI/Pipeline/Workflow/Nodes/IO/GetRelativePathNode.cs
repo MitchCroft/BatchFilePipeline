@@ -64,22 +64,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the path identification of the operation
-            try
-            {
-                string relativeTo = (string)inputs[_relativeToProperty.Name]!;
-                string path = (string)inputs[_pathProperty.Name]!;
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, Path.GetRelativePath(relativeTo, path) }
-                    }
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            string relativeTo = (string)inputs[_relativeToProperty.Name]!;
+            string path = (string)inputs[_pathProperty.Name]!;
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, Path.GetRelativePath(relativeTo, path) }
+                }
+            ));
         }
     }
 }

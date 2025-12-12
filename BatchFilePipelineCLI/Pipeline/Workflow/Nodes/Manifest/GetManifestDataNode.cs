@@ -69,33 +69,26 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
         public override ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                           CancellationToken cancellationToken)
         {
-            // Try to process the incoming data to know what value to retrieve
-            try
+            // Get the values that will be needed
+            string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
+            string identifier = (string)inputs[_identifierProperty.Name]!;
+            string key = (string)inputs[_keyProperty.Name]!;
+            string defaultValue = (string)inputs[_defaultValueProperty.Name]!;
+
+            // Read the manifest data
+            var manifest = ReadManifestData(manifestPath);
+            if (manifest.Data.TryGetValue(identifier, out var metaData) == false ||
+                metaData.TryGetValue(key, out var value) == false)
             {
-                // Get the values that will be needed
-                string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
-                string identifier = (string)inputs[_identifierProperty.Name]!;
-                string key = (string)inputs[_keyProperty.Name]!;
-                string defaultValue = (string)inputs[_defaultValueProperty.Name]!;
-
-                // Read the manifest data
-                var manifest = ReadManifestData(manifestPath);
-                if (manifest.Data.TryGetValue(identifier, out var metaData) == false ||
-                    metaData.TryGetValue(key, out var value) == false)
-                {
-                    value = defaultValue;
-                }
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, value }
-                    }
-                ));
+                value = defaultValue;
             }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, value }
+                }
+            ));
         }
     }
 }

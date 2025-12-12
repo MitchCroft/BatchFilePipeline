@@ -56,31 +56,24 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Linq
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Try to perform the filter operation on the required elements
-            try
+            // Retrieve the values that will be used for processing
+            IEnumerable collection = (IEnumerable)inputs[_collectionProperty.Name]!;
+
+            // Count the elements that are used in the collection
+            int count = 0;
+            foreach (var _ in collection)
             {
-                // Retrieve the values that will be used for processing
-                IEnumerable collection = (IEnumerable)inputs[_collectionProperty.Name]!;
-
-                // Count the elements that are used in the collection
-                int count = 0;
-                foreach (var _ in collection)
-                {
-                    ++count;
-                }
-
-                // Create the output result that will be used
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, count }
-                    }
-                ));
+                ++count;
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Create the output result that will be used
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, count }
+                }
+            ));
         }
     }
 }

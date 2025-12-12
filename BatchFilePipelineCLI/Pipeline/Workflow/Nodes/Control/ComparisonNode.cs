@@ -77,29 +77,22 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Try to perform the comparison operation
-            try
-            {
-                // Read in the values that will be used for testing
-                IComparable leftValue = (IComparable)inputs[_leftValueProperty.Name]!;
-                IComparable rightValue = (IComparable)inputs[_rightValueProperty.Name]!;
-                ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
+            // Read in the values that will be used for testing
+            IComparable leftValue = (IComparable)inputs[_leftValueProperty.Name]!;
+            IComparable rightValue = (IComparable)inputs[_rightValueProperty.Name]!;
+            ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
 
-                // Perform the comparison
-                bool boolResult = ComparisonUtility.Compare(leftValue, mode, rightValue, out int intResult);
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _boolOutputProperty.Name, boolResult },
-                        { _intOutputProperty.Name, intResult }
-                    },
-                    nextNode: boolResult.ToString(CultureInfo.InvariantCulture)
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Perform the comparison
+            bool boolResult = ComparisonUtility.Compare(leftValue, mode, rightValue, out int intResult);
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _boolOutputProperty.Name, boolResult },
+                    { _intOutputProperty.Name, intResult }
+                },
+                nextNode: boolResult.ToString(CultureInfo.InvariantCulture)
+            ));
         }
     }
 }

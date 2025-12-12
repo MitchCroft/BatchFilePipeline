@@ -94,78 +94,71 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                        CancellationToken cancellationToken)
         {
-            // We're going to try and run an external process, anything could happen
-            try
+            // Retrieve the information that is needed
+            string executable = (string)inputs[_executableProperty.Name]!;
+            string source = (string)inputs[_sourceProperty.Name]!;
+            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
+            string storageDir = (string)inputs[_storageProperty.Name]!;
+            string analyseDuration = (string)inputs[_analyseDurationProperty.Name]!;
+            string probeSize = (string)inputs[_probeSizeProperty.Name]!;
+
+            // We need a collection of the extracted subtitles from the input file
+            List<string> extractedFiles = new();
+            foreach (var stream in streams)
             {
-                // Retrieve the information that is needed
-                string executable = (string)inputs[_executableProperty.Name]!;
-                string source = (string)inputs[_sourceProperty.Name]!;
-                IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-                string storageDir = (string)inputs[_storageProperty.Name]!;
-                string analyseDuration = (string)inputs[_analyseDurationProperty.Name]!;
-                string probeSize = (string)inputs[_probeSizeProperty.Name]!;
-
-                // We need a collection of the extracted subtitles from the input file
-                List<string> extractedFiles = new();
-                foreach (var stream in streams)
+                // Check that this is a subtitle stream that can be processed
+                if (stream is not SubtitleDataStream subtitleStream)
                 {
-                    // Check that this is a subtitle stream that can be processed
-                    if (stream is not SubtitleDataStream subtitleStream)
-                    {
-                        Logger.Log($"[{nameof(ExtractSubtitlesNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
-                        continue;
-                    }
-
-                    // Get the output path for this stream
-                    string outputPath = Path.Combine(storageDir, subtitleStream.GetExportName());
-                    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-
-                    // We want to run the process to retrieve the subtitle data from the target
-                    var result = await ExternalProcess.RunAsync
-                    (
-                        executable,
-                        $"-analyzeduration {analyseDuration} -probesize {probeSize} -i \"{source}\" -map 0:{subtitleStream.Index} -c copy \"{outputPath}\"",
-                        onOutput: msg => Logger.Log($"[{nameof(ExtractSubtitlesNode)}] {msg}"),
-                        onError: msg => Logger.Log($"[{nameof(ExtractSubtitlesNode)}] {msg}"),  // Normal logs coming through the error output
-                        cancellationToken: cancellationToken
-                    );
-                    if (cancellationToken.IsCancellationRequested == true)
-                    {
-                        return new ExecutionResult();
-                    }
-
-                    // Check if there was a problem
-                    if (result.DidError)
-                    {
-                        return new ExecutionResult(result.ExitCode, result.ToString());
-                    }
-
-                    // Check that we have a file in the expected location
-                    if (subtitleStream.TryFindSubtitleFile(storageDir, out _) == false)
-                    {
-                        return new ExecutionResult(404, $"[{nameof(ExtractSubtitlesNode)}] Processed stream '{subtitleStream}' but was unable to generate an output file in '{storageDir}'");
-                    }
-
-                    // We have successfully extracted this subtitle file
-                    Logger.Success($"[{nameof(ExtractSubtitlesNode)}] Successfully extracted subtitles to '{outputPath}'");
-                    extractedFiles.Add(outputPath);
+                    Logger.Log($"[{nameof(ExtractSubtitlesNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
+                    continue;
                 }
 
-                // We have our extracted subtitle files that can be used
-                Logger.Log($"[{nameof(ExtractSubtitlesNode)}] Extracted {extractedFiles.Count} subtitle files{(extractedFiles.Count > 0 ? $"\n\t{string.Join("\n\t", extractedFiles)}" : string.Empty)}");
+                // Get the output path for this stream
+                string outputPath = Path.Combine(storageDir, subtitleStream.GetExportName());
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-                // We have the final result from processing
-                return new ExecutionResult
+                // We want to run the process to retrieve the subtitle data from the target
+                var result = await ExternalProcess.RunAsync
                 (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, extractedFiles }
-                    }
+                    executable,
+                    $"-analyzeduration {analyseDuration} -probesize {probeSize} -i \"{source}\" -map 0:{subtitleStream.Index} -c copy \"{outputPath}\"",
+                    onOutput: msg => Logger.Log($"[{nameof(ExtractSubtitlesNode)}] {msg}"),
+                    onError: msg => Logger.Log($"[{nameof(ExtractSubtitlesNode)}] {msg}"),  // Normal logs coming through the error output
+                    cancellationToken: cancellationToken
                 );
+                if (cancellationToken.IsCancellationRequested == true)
+                {
+                    return new ExecutionResult();
+                }
+
+                // Check if there was a problem
+                if (result.DidError)
+                {
+                    return new ExecutionResult(result.ExitCode, result.ToString());
+                }
+
+                // Check that we have a file in the expected location
+                if (subtitleStream.TryFindSubtitleFile(storageDir, out _) == false)
+                {
+                    return new ExecutionResult(404, $"[{nameof(ExtractSubtitlesNode)}] Processed stream '{subtitleStream}' but was unable to generate an output file in '{storageDir}'");
+                }
+
+                // We have successfully extracted this subtitle file
+                Logger.Success($"[{nameof(ExtractSubtitlesNode)}] Successfully extracted subtitles to '{outputPath}'");
+                extractedFiles.Add(outputPath);
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return new ExecutionResult(ex); }
+            // We have our extracted subtitle files that can be used
+            Logger.Log($"[{nameof(ExtractSubtitlesNode)}] Extracted {extractedFiles.Count} subtitle files{(extractedFiles.Count > 0 ? $"\n\t{string.Join("\n\t", extractedFiles)}" : string.Empty)}");
+
+            // We have the final result from processing
+            return new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, extractedFiles }
+                }
+            );
         }
     }
 }

@@ -64,39 +64,32 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the search operation to find the files that are needed
-            try
+            // Retrieve the properties that will be processed
+            StringBuilder stringProperty = new((string)inputs[_stringProperty.Name]!);
+            string dictionaryPathProperty = (string)inputs[_dictionaryPathProperty.Name]!;
+
+            // Try to read the substitutions data
+            string json = File.ReadAllText(dictionaryPathProperty);
+            Dictionary<string, string>? substitutions = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+
+            // If there are substitutions that can be made
+            if (substitutions is not null &&
+                substitutions.Count > 0)
             {
-                // Retrieve the properties that will be processed
-                StringBuilder stringProperty = new((string)inputs[_stringProperty.Name]!);
-                string dictionaryPathProperty = (string)inputs[_dictionaryPathProperty.Name]!;
-
-                // Try to read the substitutions data
-                string json = File.ReadAllText(dictionaryPathProperty); 
-                Dictionary<string, string>? substitutions = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
-
-                // If there are substitutions that can be made
-                if (substitutions is not null &&
-                    substitutions.Count > 0)
+                foreach (var (find, replace) in substitutions)
                 {
-                    foreach (var (find, replace) in substitutions)
-                    {
-                        stringProperty.Replace(find, replace);
-                    }
+                    stringProperty.Replace(find, replace);
                 }
-
-                // We have the final string that is needed
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, stringProperty.ToString() }
-                    }
-                ));
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // We have the final string that is needed
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, stringProperty.ToString() }
+                }
+            ));
         }
     }
 }

@@ -64,60 +64,53 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // We need to try and parse all of the elements
-            try
+            // Get the properties that will be used for processing
+            VideoDetails videoInfo = (VideoDetails)inputs[_videoInfoProperty.Name]!;
+            IEnumerable<HandbrakePresetOption> handbrakePresets = (IEnumerable<HandbrakePresetOption>)inputs[_handbrakePresetsProperty.Name]!;
+
+            // Look for the video stream in the file that can be compared against
+            VideoDataStream? videoStream = videoInfo.Streams.FirstOrDefault(x => x.StreamType == StreamType.Video) as VideoDataStream;
+            if (videoStream == null)
             {
-                // Get the properties that will be used for processing
-                VideoDetails videoInfo = (VideoDetails)inputs[_videoInfoProperty.Name]!;
-                IEnumerable<HandbrakePresetOption> handbrakePresets = (IEnumerable<HandbrakePresetOption>)inputs[_handbrakePresetsProperty.Name]!;
-
-                // Look for the video stream in the file that can be compared against
-                VideoDataStream? videoStream = videoInfo.Streams.FirstOrDefault(x => x.StreamType == StreamType.Video) as VideoDataStream;
-                if (videoStream == null)
-                {
-                    throw new NullReferenceException($"[{nameof(FindHandbrakePresetForVideoNode)}] Unable to find a video stream within the supplied video info '{videoInfo}'");
-                }
-
-                // Find the preset that will be best suited for the video file
-                HandbrakePresetOption? bestOption = null;
-                int bestDifference = int.MaxValue;
-                foreach (var preset in  handbrakePresets)
-                {
-                    // If the preset is invalid, don't bother
-                    if (preset.IsValid == false)
-                    {
-                        continue;
-                    }
-
-                    // Check the area that it covers
-                    int presetArea = preset.PictureWidth * preset.PictureHeight;
-                    int difference = Math.Abs(presetArea - videoStream.Area);
-                    if (difference > bestDifference)
-                    {
-                        continue;
-                    }
-                    bestOption = preset;
-                    bestDifference = difference;
-                }
-
-                // If we couldn't find an option, that's a problem
-                if (bestOption == null)
-                {
-                    throw new NullReferenceException($"[{nameof(FindHandbrakePresetForVideoNode)}] Unable to find a {nameof(HandbrakePresetOption)} within the collection for use");
-                }
-
-                // Return the result for use
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, bestOption }
-                    }
-                ));
+                throw new NullReferenceException($"[{nameof(FindHandbrakePresetForVideoNode)}] Unable to find a video stream within the supplied video info '{videoInfo}'");
             }
 
-            // Anything going wrong is going to be a problem
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Find the preset that will be best suited for the video file
+            HandbrakePresetOption? bestOption = null;
+            int bestDifference = int.MaxValue;
+            foreach (var preset in handbrakePresets)
+            {
+                // If the preset is invalid, don't bother
+                if (preset.IsValid == false)
+                {
+                    continue;
+                }
+
+                // Check the area that it covers
+                int presetArea = preset.PictureWidth * preset.PictureHeight;
+                int difference = Math.Abs(presetArea - videoStream.Area);
+                if (difference > bestDifference)
+                {
+                    continue;
+                }
+                bestOption = preset;
+                bestDifference = difference;
+            }
+
+            // If we couldn't find an option, that's a problem
+            if (bestOption == null)
+            {
+                throw new NullReferenceException($"[{nameof(FindHandbrakePresetForVideoNode)}] Unable to find a {nameof(HandbrakePresetOption)} within the collection for use");
+            }
+
+            // Return the result for use
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, bestOption }
+                }
+            ));
         }
     }
 }

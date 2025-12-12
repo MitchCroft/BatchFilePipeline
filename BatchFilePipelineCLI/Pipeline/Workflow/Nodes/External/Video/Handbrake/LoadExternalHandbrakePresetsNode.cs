@@ -57,24 +57,17 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Read in the file as JSON and try to deserialise it for use
-            try
-            {
-                // Get the property to be processed
-                string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
+            // Get the property to be processed
+            string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
 
-                // Load the output
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, JsonConvert.DeserializeObject<HandbrakePresetManifestRoot>(File.ReadAllText(manifestPath)) }
-                    }
-                ));
-            }
-
-            // Anything going wrong is a problem
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Load the output
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, JsonConvert.DeserializeObject<HandbrakePresetManifestRoot>(File.ReadAllText(manifestPath)) }
+                }
+            ));
         }
     }
 }

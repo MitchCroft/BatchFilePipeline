@@ -71,22 +71,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the string format operation
-            try
-            {
-                DateTime dateTime = (DateTime)inputs[_dateTimeProperty.Name]!;
-                string formatString = (string)inputs[_formatStringProperty.Name]!;
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, dateTime.ToString(formatString, CultureInfo.InvariantCulture) }
-                    }
-                ));
-            }
-
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            DateTime dateTime = (DateTime)inputs[_dateTimeProperty.Name]!;
+            string formatString = (string)inputs[_formatStringProperty.Name]!;
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, dateTime.ToString(formatString, CultureInfo.InvariantCulture) }
+                }
+            ));
         }
     }
 }

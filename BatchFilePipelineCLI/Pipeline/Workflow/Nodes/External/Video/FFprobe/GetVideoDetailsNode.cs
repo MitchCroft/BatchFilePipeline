@@ -68,47 +68,40 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe
         public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                        CancellationToken cancellationToken)
         {
-            // We're going to try and run an external process, and anything could happen
-            try
+            // Get the properties that will be run
+            string executable = (string)inputs["FFprobe"]!;
+            string target = (string)inputs["Target"]!;
+
+            // We want to run the process to find the meta data for the target file
+            var result = await ExternalProcess.RunAsync
+            (
+                executable,
+                $"-v quiet -print_format json -show_format -show_streams -show_chapters -show_data \"{target}\"",
+                onError: msg => Logger.Error($"[{nameof(GetVideoDetailsNode)}] {msg}"),
+                cancellationToken: cancellationToken
+            );
+            if (cancellationToken.IsCancellationRequested == true)
             {
-                // Get the properties that will be run
-                string executable = (string)inputs["FFprobe"]!;
-                string target = (string)inputs["Target"]!;
-
-                // We want to run the process to find the meta data for the target file
-                var result = await ExternalProcess.RunAsync
-                (
-                    executable,
-                    $"-v quiet -print_format json -show_format -show_streams -show_chapters -show_data \"{target}\"",
-                    onError: msg => Logger.Error($"[{nameof(GetVideoDetailsNode)}] {msg}"),
-                    cancellationToken: cancellationToken
-                );
-                if (cancellationToken.IsCancellationRequested == true)
-                {
-                    return new ExecutionResult();
-                }
-
-                // Check if there was a problem
-                if (result.DidError)
-                {
-                    return new ExecutionResult(result.ExitCode, result.ToString());
-                }
-
-                // We can just log the single output that was received
-                Logger.Log($"[{nameof(GetVideoDetailsNode)}] {result.StdOut}");
-
-                // We need to format the received data into a format that we can use with other nodes
-                return new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, ParseVideoDetails(result.StdOut) }
-                    }
-                );
+                return new ExecutionResult();
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return new ExecutionResult(ex); }
+            // Check if there was a problem
+            if (result.DidError)
+            {
+                return new ExecutionResult(result.ExitCode, result.ToString());
+            }
+
+            // We can just log the single output that was received
+            Logger.Log($"[{nameof(GetVideoDetailsNode)}] {result.StdOut}");
+
+            // We need to format the received data into a format that we can use with other nodes
+            return new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, ParseVideoDetails(result.StdOut) }
+                }
+            );
         }
 
         //PRIVATE

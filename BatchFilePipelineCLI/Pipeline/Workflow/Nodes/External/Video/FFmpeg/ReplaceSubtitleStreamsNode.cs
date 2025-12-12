@@ -93,103 +93,93 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                        CancellationToken cancellationToken)
         {
-            // We're going to be running a rather complex external operation, anything could happen
-            try
+            // Retrieve the information that will be used for processing
+            string executable = (string)inputs[_executableProperty.Name]!;
+            string sourcePath = (string)inputs[_sourcePathProperty.Name]!;
+            VideoDetails targetInfo = (VideoDetails)inputs[_fileInfoProperty.Name]!;
+            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
+            string externalSubtitleDir = (string)inputs[_externalSubtitleDirProperty.Name]!;
+            string subtitleFilesExtension = (string)inputs[_subtitleFilesExtensionProperty.Name]!;
+            string outputPath = (string)inputs[_outputPathProperty.Name]!;
+
+            // We need to identify the collection of files that will be included in this remuxing
+            List<string> filesToCombine = new List<string> { sourcePath };
+
+            // Try to find the subtitle streams that we're going to be using in this process
+            List<(SubtitleDataStream stream, string subtitlePath)> subtitleStreams = new();
+            foreach (var stream in streams)
             {
-                // Retrieve the information that will be used for processing
-                string executable = (string)inputs[_executableProperty.Name]!;
-                string sourcePath = (string)inputs[_sourcePathProperty.Name]!;
-                VideoDetails targetInfo = (VideoDetails)inputs[_fileInfoProperty.Name]!;
-                IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-                string externalSubtitleDir = (string)inputs[_externalSubtitleDirProperty.Name]!;
-                string subtitleFilesExtension = (string)inputs[_subtitleFilesExtensionProperty.Name]!;
-                string outputPath = (string)inputs[_outputPathProperty.Name]!;
-
-                // We need to identify the collection of files that will be included in this remuxing
-                List<string> filesToCombine = new List<string> { sourcePath };
-
-                // Try to find the subtitle streams that we're going to be using in this process
-                List<(SubtitleDataStream stream, string subtitlePath)> subtitleStreams = new();
-                foreach (var stream in streams)
+                if (stream is not SubtitleDataStream subtitleStream)
                 {
-                    if (stream is not SubtitleDataStream subtitleStream)
-                    {
-                        Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
-                        continue;
-                    }
-
-                    // Look for the subtitle file that will be used for this stream
-                    if (subtitleStream.TryFindSubtitleFile(externalSubtitleDir, $".{subtitleFilesExtension}", out var externalSubtitleFilePath) == false)
-                    {
-                        return new ExecutionResult(404, $"[{nameof(ReplaceSubtitleStreamsNode)}] Unable to find the external subtitle file in '{externalSubtitleDir}' for one of the streams being replaced");
-                    }
-
-                    // Add the file to the collection of streams we're managing
-                    subtitleStreams.Add((subtitleStream, externalSubtitleFilePath));
-                    filesToCombine.Add(externalSubtitleFilePath);
+                    Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
+                    continue;
                 }
 
-                // We can start constructing our argument for use. We need to include all of the external files
-                StringBuilder argument = new StringBuilder($"{string.Join(" ", filesToCombine.Select(x => $"-i \"{x}\""))} ");
-
-                // We want to preserve all of the streams not being replaced
-                var preservedStreams = targetInfo.Streams
-                    .Where(x => subtitleStreams.Any(y => x == y.stream) == false)
-                    .ToArray();
-                argument.Append($"{string.Join(" ", preservedStreams.Select(x => $"-map 0:{x.Index}"))} ");
-
-                // We can copy in all of the new subtitle streams as well
-                argument.Append($"{string.Join(" ", subtitleStreams.Select((_, i) => $"-map {i + 1}:0"))} -c:v copy -c:a copy ");
-
-                // Count how many existing subtitle streams exist outside of those being replaced
-                int persistingSubtitlesCount = preservedStreams.Count(x => x.StreamType == StreamType.Subtitle);
-
-                // Force the encoding for the subtitle streams
-                argument.Append($"{string.Join(" ", subtitleStreams.Select((x, i) => $"-c:s:{persistingSubtitlesCount + i} {Path.GetExtension(x.subtitlePath).Substring(1)}"))} ");
-
-                // We can add all of the meta data that did exist on the previous streams
-                var metaDataInserts = subtitleStreams
-                    .Select((x, i) => (x.stream, i))
-                    .Where(x => (x.stream.Tags?.Count ?? 0) != 0)
-                    .Select(x => string.Join(" ", x.stream.Tags!.Select(y => $"-metadata:s:{preservedStreams.Length + x.i} {y.Key}={y.Value}")));
-                argument.Append($"{string.Join(" ", metaDataInserts)} ");
-
-                // Finally, we have the output path for the file we want to use
-                argument.Append($"\"{outputPath}\"");
-
-                // Make sure the output directory exists
-                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-
-                // We can run the remuxing process now
-                var result = await ExternalProcess.RunAsync
-                (
-                    executable,
-                    argument.ToString(),
-                    onOutput: msg => Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] {msg}"),
-                    onError: msg => Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] {msg}"),
-                    cancellationToken: cancellationToken
-                );
-                if (cancellationToken.IsCancellationRequested == true)
+                // Look for the subtitle file that will be used for this stream
+                if (subtitleStream.TryFindSubtitleFile(externalSubtitleDir, $".{subtitleFilesExtension}", out var externalSubtitleFilePath) == false)
                 {
-                    return new ExecutionResult();
+                    return new ExecutionResult(404, $"[{nameof(ReplaceSubtitleStreamsNode)}] Unable to find the external subtitle file in '{externalSubtitleDir}' for one of the streams being replaced");
                 }
 
-                // If there was a problem, we're in trouble
-                if (result.DidError == true)
-                {
-                    return new ExecutionResult(result.ExitCode, result.ToString());
-                }
-                Logger.Success($"[{nameof(ReplaceSubtitleStreamsNode)}] Replaced subtitles in '{targetInfo}'\n\t{string.Join("\n\t", subtitleStreams.Select(x => $"{x.stream.Index} -> {x.subtitlePath}"))}");
-
-                // We have completed successfully
-                return new ExecutionResult
-                (
-                    new Dictionary<string, object?>()
-                );
+                // Add the file to the collection of streams we're managing
+                subtitleStreams.Add((subtitleStream, externalSubtitleFilePath));
+                filesToCombine.Add(externalSubtitleFilePath);
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return new ExecutionResult(ex); }
+            // We can start constructing our argument for use. We need to include all of the external files
+            StringBuilder argument = new StringBuilder($"{string.Join(" ", filesToCombine.Select(x => $"-i \"{x}\""))} ");
+
+            // We want to preserve all of the streams not being replaced
+            var preservedStreams = targetInfo.Streams
+                .Where(x => subtitleStreams.Any(y => x == y.stream) == false)
+                .ToArray();
+            argument.Append($"{string.Join(" ", preservedStreams.Select(x => $"-map 0:{x.Index}"))} ");
+
+            // We can copy in all of the new subtitle streams as well
+            argument.Append($"{string.Join(" ", subtitleStreams.Select((_, i) => $"-map {i + 1}:0"))} -c:v copy -c:a copy ");
+
+            // Count how many existing subtitle streams exist outside of those being replaced
+            int persistingSubtitlesCount = preservedStreams.Count(x => x.StreamType == StreamType.Subtitle);
+
+            // Force the encoding for the subtitle streams
+            argument.Append($"{string.Join(" ", subtitleStreams.Select((x, i) => $"-c:s:{persistingSubtitlesCount + i} {Path.GetExtension(x.subtitlePath).Substring(1)}"))} ");
+
+            // We can add all of the meta data that did exist on the previous streams
+            var metaDataInserts = subtitleStreams
+                .Select((x, i) => (x.stream, i))
+                .Where(x => (x.stream.Tags?.Count ?? 0) != 0)
+                .Select(x => string.Join(" ", x.stream.Tags!.Select(y => $"-metadata:s:{preservedStreams.Length + x.i} {y.Key}={y.Value}")));
+            argument.Append($"{string.Join(" ", metaDataInserts)} ");
+
+            // Finally, we have the output path for the file we want to use
+            argument.Append($"\"{outputPath}\"");
+
+            // Make sure the output directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+
+            // We can run the remuxing process now
+            var result = await ExternalProcess.RunAsync
+            (
+                executable,
+                argument.ToString(),
+                onOutput: msg => Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] {msg}"),
+                onError: msg => Logger.Log($"[{nameof(ReplaceSubtitleStreamsNode)}] {msg}"),
+                cancellationToken: cancellationToken
+            );
+            if (cancellationToken.IsCancellationRequested == true)
+            {
+                return new ExecutionResult();
+            }
+
+            // If there was a problem, we're in trouble
+            if (result.DidError == true)
+            {
+                return new ExecutionResult(result.ExitCode, result.ToString());
+            }
+            Logger.Success($"[{nameof(ReplaceSubtitleStreamsNode)}] Replaced subtitles in '{targetInfo}'\n\t{string.Join("\n\t", subtitleStreams.Select(x => $"{x.stream.Index} -> {x.subtitlePath}"))}");
+
+            // We have completed successfully
+            return new ExecutionResult();
         }
     }
 }

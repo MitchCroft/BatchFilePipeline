@@ -75,109 +75,102 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
         public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                        CancellationToken cancellationToken)
         {
-            // We're going to be using external processes, anything could happen
-            try
+            // Retrieve the information that is needed
+            string executable = (string)inputs[_executableProperty.Name]!;
+            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
+            string sourceDir = (string)inputs[_sourceDirProperty.Name]!;
+
+            // We need a collection of the extracted subtitles from the process
+            List<string> convertedFiles = new();
+            foreach (var stream in streams)
             {
-                // Retrieve the information that is needed
-                string executable = (string)inputs[_executableProperty.Name]!;
-                IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-                string sourceDir = (string)inputs[_sourceDirProperty.Name]!;
-
-                // We need a collection of the extracted subtitles from the process
-                List<string> convertedFiles = new();
-                foreach (var stream in streams)
+                // Check that this is a subtitle stream that can be processed
+                if (stream is not SubtitleDataStream subtitleStream)
                 {
-                    // Check that this is a subtitle stream that can be processed
-                    if (stream is not SubtitleDataStream subtitleStream)
-                    {
-                        Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
-                        continue;
-                    }
-
-                    // Get the expected path of the converted file for processing
-                    if (subtitleStream.TryFindSubtitleFile(sourceDir, out var expectedInputFile) == false)
-                    {
-                        throw new NullReferenceException($"[{nameof(ConvertGraphicSubsToTextNode)}] Unable to find the expected source subtitles file in '{sourceDir}'");
-                    }
-
-                    // We can run the process that will perform the conversion process
-                    DateTime? startTime = null;
-                    double prevPercentage = 0;
-                    double bufferPercentage = 0;
-                    int counter = 0;
-                    var result = await ExternalProcess.RunAsync
-                    (
-                        executable,
-                        $"/convert \"{expectedInputFile}\" \"{SubtitleDataStreamUtility.STANDARD_TEXT_SUBTITLE_EXTENSION}\"",
-                        onOutput: msg =>
-                        {
-                            // If this is not a progress line, it might be other information that is important to be able to reference
-                            if (CompletionEstimateUtility.TryGetRemainingDuration(ref startTime, msg, out TimeSpan remaining, ref bufferPercentage) == false)
-                            {
-                                Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] {msg}");
-                                return;
-                            }
-
-                            // Limit the number of progress logs that are generated, these can be very frequent
-                            ++counter;
-                            if (counter % 25 != 0)
-                            {
-                                return;
-                            }
-
-                            // Basic log we can use for record
-                            string log = $"[{nameof(ConvertGraphicSubsToTextNode)}] OCR Progression {bufferPercentage.ToString("F2")}% - ETA {remaining} ({DateTime.Now + remaining})";
-                            Logger.Log(log);
-
-                            // If we pass a milestone, then we can log that as well
-                            int prevBucket = (int)Math.Floor(prevPercentage / 25);
-                            int curBucket = (int)Math.Floor(bufferPercentage / 25);
-                            prevPercentage = bufferPercentage;
-                            if (curBucket > prevBucket)
-                            {
-                                Logger.Success(log);
-                            }
-                        },
-                        onError: msg => Logger.Error($"[{nameof(ConvertGraphicSubsToTextNode)}] {msg}"),
-                        cancellationToken: cancellationToken
-                    );
-                    if (cancellationToken.IsCancellationRequested == true)
-                    {
-                        return new ExecutionResult();
-                    }
-
-                    // If there was a problem, we're in trouble
-                    if (result.DidError == true)
-                    {
-                        return new ExecutionResult(result.ExitCode, result.ToString());
-                    }
-
-                    // Check that we have a file in the expected location
-                    if (subtitleStream.TryFindSubtitleFile(sourceDir, $".{SubtitleDataStreamUtility.STANDARD_TEXT_SUBTITLE_EXTENSION}", out var outputFile) == false)
-                    {
-                        return new ExecutionResult(404, $"[{nameof(ConvertGraphicSubsToTextNode)}] Processed subtitle file '{expectedInputFile}' but was unable to generate an output file in '{sourceDir}'");
-                    }
-
-                    // We have successfully converted the file
-                    Logger.Success($"[{nameof(ConvertGraphicSubsToTextNode)}] Successfully converted image based subtitles at '{expectedInputFile}' to text based in '{outputFile}'");
-                    convertedFiles.Add(outputFile);
+                    Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
+                    continue;
                 }
 
-                // We have our final collection of converted files
-                Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] Converted {convertedFiles.Count} subtitles files{(convertedFiles.Count > 0 ? $"\n\t{string.Join("\n\t", convertedFiles)}" : string.Empty)}");
+                // Get the expected path of the converted file for processing
+                if (subtitleStream.TryFindSubtitleFile(sourceDir, out var expectedInputFile) == false)
+                {
+                    throw new NullReferenceException($"[{nameof(ConvertGraphicSubsToTextNode)}] Unable to find the expected source subtitles file in '{sourceDir}'");
+                }
 
-                // We have the final result from the processing
-                return new ExecutionResult
+                // We can run the process that will perform the conversion process
+                DateTime? startTime = null;
+                double prevPercentage = 0;
+                double bufferPercentage = 0;
+                int counter = 0;
+                var result = await ExternalProcess.RunAsync
                 (
-                    new Dictionary<string, object?>
+                    executable,
+                    $"/convert \"{expectedInputFile}\" \"{SubtitleDataStreamUtility.STANDARD_TEXT_SUBTITLE_EXTENSION}\"",
+                    onOutput: msg =>
                     {
-                        { _outputProperty.Name, convertedFiles }
-                    }
+                        // If this is not a progress line, it might be other information that is important to be able to reference
+                        if (CompletionEstimateUtility.TryGetRemainingDuration(ref startTime, msg, out TimeSpan remaining, ref bufferPercentage) == false)
+                        {
+                            Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] {msg}");
+                            return;
+                        }
+
+                        // Limit the number of progress logs that are generated, these can be very frequent
+                        ++counter;
+                        if (counter % 25 != 0)
+                        {
+                            return;
+                        }
+
+                        // Basic log we can use for record
+                        string log = $"[{nameof(ConvertGraphicSubsToTextNode)}] OCR Progression {bufferPercentage.ToString("F2")}% - ETA {remaining} ({DateTime.Now + remaining})";
+                        Logger.Log(log);
+
+                        // If we pass a milestone, then we can log that as well
+                        int prevBucket = (int)Math.Floor(prevPercentage / 25);
+                        int curBucket = (int)Math.Floor(bufferPercentage / 25);
+                        prevPercentage = bufferPercentage;
+                        if (curBucket > prevBucket)
+                        {
+                            Logger.Success(log);
+                        }
+                    },
+                    onError: msg => Logger.Error($"[{nameof(ConvertGraphicSubsToTextNode)}] {msg}"),
+                    cancellationToken: cancellationToken
                 );
+                if (cancellationToken.IsCancellationRequested == true)
+                {
+                    return new ExecutionResult();
+                }
+
+                // If there was a problem, we're in trouble
+                if (result.DidError == true)
+                {
+                    return new ExecutionResult(result.ExitCode, result.ToString());
+                }
+
+                // Check that we have a file in the expected location
+                if (subtitleStream.TryFindSubtitleFile(sourceDir, $".{SubtitleDataStreamUtility.STANDARD_TEXT_SUBTITLE_EXTENSION}", out var outputFile) == false)
+                {
+                    return new ExecutionResult(404, $"[{nameof(ConvertGraphicSubsToTextNode)}] Processed subtitle file '{expectedInputFile}' but was unable to generate an output file in '{sourceDir}'");
+                }
+
+                // We have successfully converted the file
+                Logger.Success($"[{nameof(ConvertGraphicSubsToTextNode)}] Successfully converted image based subtitles at '{expectedInputFile}' to text based in '{outputFile}'");
+                convertedFiles.Add(outputFile);
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return new ExecutionResult(ex); }
+            // We have our final collection of converted files
+            Logger.Log($"[{nameof(ConvertGraphicSubsToTextNode)}] Converted {convertedFiles.Count} subtitles files{(convertedFiles.Count > 0 ? $"\n\t{string.Join("\n\t", convertedFiles)}" : string.Empty)}");
+
+            // We have the final result from the processing
+            return new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, convertedFiles }
+                }
+            );
         }
     }
 }

@@ -63,31 +63,24 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
                                                                  CancellationToken cancellationToken)
         {
-            // Process the search operation to find the files that are needed
-            try
+            // Retrieve the properties that will be processed
+            object sourceProperty = (object)inputs[_sourceProperty.Name]!;
+            string pathProperty = (string)inputs[_pathProperty.Name]!;
+
+            // Process the selection of the required sub-value for use
+            if (Resolver.TryResolveReflectiveProperty(sourceProperty, pathProperty, out var resultObj) == false)
             {
-                // Retrieve the properties that will be processed
-                object sourceProperty = (object)inputs[_sourceProperty.Name]!;
-                string pathProperty = (string)inputs[_pathProperty.Name]!;
-
-                // Process the selection of the required sub-value for use
-                if (Resolver.TryResolveReflectiveProperty(sourceProperty, pathProperty, out var resultObj) == false)
-                {
-                    Logger.Warning($"[{nameof(ReflectiveSelectNode)}] Encountered a null value while processing the path '{pathProperty}' for the object '{sourceProperty}'");
-                }
-
-                // Find the collection of files that need to be handled
-                return ValueTask.FromResult(new ExecutionResult
-                (
-                    new Dictionary<string, object?>
-                    {
-                        { _outputProperty.Name, resultObj }
-                    }
-                ));
+                Logger.Warning($"[{nameof(ReflectiveSelectNode)}] Encountered a null value while processing the path '{pathProperty}' for the object '{sourceProperty}'");
             }
 
-            // If something went wrong, use the exception as the output result
-            catch (Exception ex) { return ValueTask.FromResult(new ExecutionResult(ex)); }
+            // Find the collection of files that need to be handled
+            return ValueTask.FromResult(new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, resultObj }
+                }
+            ));
         }
     }
 }
