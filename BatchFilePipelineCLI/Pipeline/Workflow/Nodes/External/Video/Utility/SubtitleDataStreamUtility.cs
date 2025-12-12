@@ -1,4 +1,4 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data.Streams;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using System.Diagnostics.CodeAnalysis;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility

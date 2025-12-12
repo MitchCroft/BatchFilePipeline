@@ -1,4 +1,4 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
+﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data
 {
     /// <summary>
     /// Stores a collection of the different meta-data values that are contained for a video file

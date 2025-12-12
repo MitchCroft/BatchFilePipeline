@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data
 {
     /// <summary>
     /// Store a collection of values describing the chapters of a video file
@@ -11,7 +11,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
         /*----------Properties----------*/
         //PUBLIC
 
-        [JsonProperty("id")] public int Id { get; set; }
+        [JsonProperty("id")] public long Id { get; set; }
         public string Title => Tags?.TryGetValue("title", out var title) ?? false ? title : "[UNTITLED]";
         [JsonProperty("time_base")] public string? TimeBase { get; set; }
         [JsonProperty("start")] public long Start { get; set; }

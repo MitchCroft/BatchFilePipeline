@@ -1,5 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data.Streams;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility;

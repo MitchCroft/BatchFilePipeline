@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data
 {
     /// <summary>
     /// Store a collection of disposition flags that correlate to a stream of data

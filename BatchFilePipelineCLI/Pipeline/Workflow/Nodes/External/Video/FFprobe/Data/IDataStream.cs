@@ -1,4 +1,4 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
+﻿namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data
 {
     /// <summary>
     /// Define a collection of values that exist within a video file stream

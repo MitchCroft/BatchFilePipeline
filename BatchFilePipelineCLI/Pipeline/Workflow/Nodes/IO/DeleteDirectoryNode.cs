@@ -68,7 +68,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
                         recursive
                     );
                 }
-                catch (DriveNotFoundException) {}
+                catch (DirectoryNotFoundException) {}
                 return ValueTask.FromResult(new ExecutionResult
                 (
                     new Dictionary<string, object?>()

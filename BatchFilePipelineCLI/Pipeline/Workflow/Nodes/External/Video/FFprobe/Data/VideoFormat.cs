@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Data
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data
 {
     /// <summary>
     /// Store the basic information for a video file that has been processed
