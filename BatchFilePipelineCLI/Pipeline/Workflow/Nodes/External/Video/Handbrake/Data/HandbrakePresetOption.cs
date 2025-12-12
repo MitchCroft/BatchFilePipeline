@@ -47,5 +47,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.
         public bool IsValid => string.IsNullOrWhiteSpace(PresetName) == false &&
             PictureWidth > 0 &&
             PictureHeight > 0;
+
+        /*----------Functions----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// Use the preset name to represent this object
+        /// </summary>
+        public override string ToString() => PresetName;
     }
 }
