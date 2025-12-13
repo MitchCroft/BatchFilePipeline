@@ -237,7 +237,7 @@
 						<True>Process_10</True>
 
 						<!-- We will need to actually process the file to get a useful result -->
-						<False>Process_11</False>
+						<False>Process_12</False>
 					</Connections>
 				</Node>
 
@@ -252,12 +252,25 @@
 						<DestinationPath>{OutputDir}/{RelativeDir}</DestinationPath>
 					</Inputs>
 					<Connections>
+						<Default>Process_11</Default>
+					</Connections>
+				</Node>
+
+				<!-- There aren't any subtitles that need processing, we can mark it off as untouched -->
+				<Node Name="Mark Untouched Meta-Data" ID="Process_11" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ConvertGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Untouched</Value>
+					</Inputs>
+					<Connections>
 						<Default>Process_End_00</Default>
 					</Connections>
 				</Node>
 
 				<!-- We need to extract all of the subtitles to a file that we can process -->
-				<Node Name="Extract Subtitles" ID="Process_11" TypeID="ExtractSubtitlesNode">
+				<Node Name="Extract Subtitles" ID="Process_12" TypeID="ExtractSubtitlesNode">
 					<Inputs>
 						<FFmpeg>{FFmpeg}</FFmpeg>
 						<Source>{RemoteFile}</Source>
@@ -265,24 +278,24 @@
 						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
 					</Inputs>
 					<Connections>
-						<Default>Process_12</Default>
+						<Default>Process_13</Default>
 					</Connections>
 				</Node>
 
 				<!-- Now that we have the extracted files, we need to convert them into text files that can be added back to the source file -->
-				<Node Name="Convert Graphic Subs to Text" ID="Process_12" TypeID="ConvertGraphicSubsToTextNode">
+				<Node Name="Convert Graphic Subs to Text" ID="Process_13" TypeID="ConvertGraphicSubsToTextNode">
 					<Inputs>
 						<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
 						<Streams>{SubtitleStreams}</Streams>
 						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
 					</Inputs>
 					<Connections>
-						<Default>Process_13</Default>
+						<Default>Process_14</Default>
 					</Connections>
 				</Node>
 
 				<!-- Subtitles are converted, we can now remux our source file with the new subtitles put into place -->
-				<Node Name="Replace Subtitles with Text Versions" ID="Process_13" TypeID="ReplaceSubtitleStreamsNode">
+				<Node Name="Replace Subtitles with Text Versions" ID="Process_14" TypeID="ReplaceSubtitleStreamsNode">
 					<Inputs>
 						<FFmpeg>{FFmpeg}</FFmpeg>
 						<SourcePath>{RemoteFile}</SourcePath>
@@ -295,12 +308,12 @@
 						<Output>RemuxFile</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_14</Default>
+						<Default>Process_15</Default>
 					</Connections>
 				</Node>
 
 				<!-- Upload the remuxed file back into the expected output directory -->
-				<Node Name="Upload Remuxed File" ID="Process_14" TypeID="UploadSSHFileNode">
+				<Node Name="Upload Remuxed File" ID="Process_15" TypeID="UploadSSHFileNode">
 					<Inputs>
 						<Host>{SSH_HOST}</Host>
 						<Username>{SSH_USER}</Username>
@@ -308,6 +321,19 @@
 						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
 						<TargetFile>{RemuxFile}</TargetFile>
 						<DestinationPath>{OutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_16</Default>
+					</Connections>
+				</Node>
+
+				<!-- There aren't any subtitles that need processing, we can mark it off as untouched -->
+				<Node Name="Mark Conversion Meta-Data" ID="Process_16" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ConvertGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Subtitles_Converted</Value>
 					</Inputs>
 					<Connections>
 						<Default>Process_End_00</Default>

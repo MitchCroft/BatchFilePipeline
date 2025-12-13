@@ -201,7 +201,7 @@
 						<True>Process_08</True>
 
 						<!-- We will need to actually process the file to get a useful result -->
-						<False>Process_09</False>
+						<False>Process_10</False>
 					</Connections>
 				</Node>
 
@@ -213,12 +213,25 @@
 						<Overwrite>True</Overwrite>
 					</Inputs>
 					<Connections>
+						<Default>Process_09</Default>
+					</Connections>
+				</Node>
+
+				<!-- There aren't any subtitles that need processing, we can mark it off as untouched -->
+				<Node Name="Mark Untouched Meta-Data" ID="Process_09" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Untouched</Value>
+					</Inputs>
+					<Connections>
 						<Default>Process_End</Default>
 					</Connections>
 				</Node>
 
 				<!-- We need to extract all of the subtitles to a file that we can process -->
-				<Node Name="Extract Subtitles" ID="Process_09" TypeID="ExtractSubtitlesNode">
+				<Node Name="Extract Subtitles" ID="Process_10" TypeID="ExtractSubtitlesNode">
 					<Inputs>
 						<FFmpeg>{FFmpeg}</FFmpeg>
 						<Source>{CurrentIdentifier}</Source>
@@ -226,24 +239,24 @@
 						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
 					</Inputs>
 					<Connections>
-						<Default>Process_10</Default>
+						<Default>Process_11</Default>
 					</Connections>
 				</Node>
 
 				<!-- Now that we have the extracted files, we need to convert them into text files that can be added back to the source file -->
-				<Node Name="Convert Graphic Subs to Text" ID="Process_10" TypeID="ConvertGraphicSubsToTextNode">
+				<Node Name="Convert Graphic Subs to Text" ID="Process_11" TypeID="ConvertGraphicSubsToTextNode">
 					<Inputs>
 						<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
 						<Streams>{SubtitleStreams}</Streams>
 						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
 					</Inputs>
 					<Connections>
-						<Default>Process_11</Default>
+						<Default>Process_12</Default>
 					</Connections>
 				</Node>
 
 				<!-- We need the file name isolated for the output process -->
-				<Node Name="Isolate Video File Name" ID="Process_11" TypeID="GetFileNameNode">
+				<Node Name="Isolate Video File Name" ID="Process_12" TypeID="GetFileNameNode">
 					<Inputs>
 						<FilePath>{CurrentIdentifier}</FilePath>
 					</Inputs>
@@ -251,12 +264,12 @@
 						<Output>FileName</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_12</Default>
+						<Default>Process_13</Default>
 					</Connections>
 				</Node>
 
 				<!-- Subtitles are converted, we can now remux our source file with the new subtitles put into place -->
-				<Node Name="Replace Subtitles with Text Versions" ID="Process_12" TypeID="ReplaceSubtitleStreamsNode">
+				<Node Name="Replace Subtitles with Text Versions" ID="Process_13" TypeID="ReplaceSubtitleStreamsNode">
 					<Inputs>
 						<FFmpeg>{FFmpeg}</FFmpeg>
 						<SourcePath>{CurrentIdentifier}</SourcePath>
@@ -266,16 +279,29 @@
 						<OutputPath>{WorkingDir}\{RelativeDir}\{FileName}</OutputPath>
 					</Inputs>
 					<Connections>
-						<Default>Process_13</Default>
+						<Default>Process_14</Default>
 					</Connections>
 				</Node>
 
 				<!-- Copy the remuxed file from the working directory to the final location -->
-				<Node Name="Move Remuxed File into Place" ID="Process_13" TypeID="MoveFileNode">
+				<Node Name="Move Remuxed File into Place" ID="Process_14" TypeID="MoveFileNode">
 					<Inputs>
 						<SourceFileName>{WorkingDir}\{RelativeDir}\{FileName}</SourceFileName>
 						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
 						<Overwrite>True</Overwrite>
+					</Inputs>
+					<Connections>
+						<Default>Process_15</Default>
+					</Connections>
+				</Node>
+
+				<!-- We did the full subtitle conversion for the file -->
+				<Node Name="Mark Conversion Meta-Data" ID="Process_15" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Subtitles_Converted</Value>
 					</Inputs>
 					<Connections>
 						<Default>Process_End</Default>
