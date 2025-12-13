@@ -106,6 +106,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
 
             // Filter the files that are retrieved based on the filters
             var files = await fileSearch.Where(x => filterSegments.Any(y => FileSystemName.MatchesSimpleExpression(y, x)))
+                .OrderBy(x => x)
                 .ToArrayAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested == true)
             {
