@@ -45,7 +45,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Da
                     case "ass":
                     case "ssa":
                     case "webvtt":
-                    case "text":    return SubtitleType.Text;
+                    case "text":
+                    case "mov_text": return SubtitleType.Text;
 
                     // Image based
                     case "dvd_subtitle":
