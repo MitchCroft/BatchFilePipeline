@@ -1,6 +1,6 @@
 ﻿using BatchFilePipelineCLI.PropertyResolver;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Identification
+namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
     /// <summary>
     /// Define a node that can be used to search through directories for files that should be returned for processing

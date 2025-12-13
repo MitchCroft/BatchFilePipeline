@@ -145,6 +145,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             List<object> completedFailure = new();
 
             // We will manage this process as a separate, cancellable task that won't effect the flow of everything else
+            bool wasCancelled = false;
             using (var token = CancellationStack.PushSource(cancellationToken))
             {
                 do
@@ -153,7 +154,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     var idOutput = await _identificationGraphRunner.ExecuteGraphAsync(runtimeVariables, token);
                     if (token.IsCancellationRequested == true)
                     {
-                        return new ExecutionResult(outputResults);
+                        break;
                     }
 
                     // We're expecting a collection of elements that can be used as the inputs for the process
@@ -196,7 +197,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                 var processOutput = await _processGraphRunner.ExecuteGraphAsync(instancedRuntimeVariables, token);
                                 if (token.IsCancellationRequested == true)
                                 {
-                                    return new ExecutionResult(outputResults);
+                                    break;
                                 }
                                 if (processOutput.IsError == true)
                                 {
@@ -239,10 +240,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     }
 
                 } while (watchFiles == true && token.IsCancellationRequested == false);
+                wasCancelled = token.IsCancellationRequested;
             }
 
             // Update the results with completion state of the process
-            outputResults["ProcessedSuccessfully"] = completedFailure.Count == 0;
+            outputResults["ProcessedSuccessfully"] = completedFailure.Count == 0 && wasCancelled == false;
 
             int total = completedSuccessfully.Count + completedFailure.Count;
             if (total > 0)

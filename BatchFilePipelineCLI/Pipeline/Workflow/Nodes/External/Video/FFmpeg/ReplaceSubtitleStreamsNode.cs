@@ -69,6 +69,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
             "Path/To/Output/File.mp4"
         );
 
+        /// <summary>
+        /// We can pass out the path to the file so that it can be used in later stages
+        /// </summary>
+        private readonly Property _outputProperty = Property.Create
+        (
+            "Output",
+            "The path to the resulting video file that has had its subtitle streams replaced",
+            typeof(string)
+        );
+
         /*----------Functions----------*/
         //PUBLIC
 
@@ -82,7 +92,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
+        public IList<Property> GetOutputProperties() => [_outputProperty];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -179,7 +189,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
             Logger.Success($"[{nameof(ReplaceSubtitleStreamsNode)}] Replaced subtitles in '{targetInfo}'\n\t{string.Join("\n\t", subtitleStreams.Select(x => $"{x.stream.Index} -> {x.subtitlePath}"))}");
 
             // We have completed successfully
-            return new ExecutionResult();
+            return new ExecutionResult
+            (
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, outputPath }
+                }
+            );
         }
     }
 }
