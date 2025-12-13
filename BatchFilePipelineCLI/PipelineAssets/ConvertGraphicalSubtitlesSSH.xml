@@ -1,9 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+	Convert Graphical Subtitles SSH
+
+	This pipeline takes a series of video files from a remote server and processes them to
+	convert any graphical subtitles into text based subtitles. It outputs them back to the
+	server in a separate output directory, maintaining the same directory structure as the input.
+	It uses a manifest to track which files have already been processed to avoid redundant work.
+
+	Applications:
+	- ffprobe = Read video information to know how to process them
+	- ffmpeg = Extract and remux video files
+	- SubtitleEdit = Convert graphical subtitles to text based subtitles
+
+	Required inputs:
+	- InputDir = The directory on the remote server where the input files should be processed from
+	- IntermediateDir = A local directory where the files can be placed while processing them
+	- OutputDir = The directory on the remote server where the files can be output to when finished processing
+-->
+
 <Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles">
 	<Environment>
 		<FFprobe>ffprobe</FFprobe>
 		<FFmpeg>ffmpeg</FFmpeg>
 		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
 	</Environment>
 	<Workflow>
 		<!-- We want to identify a staging directory within which we can store files that will be used for processing -->
@@ -55,7 +75,7 @@
 						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
 						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
 						<SearchDirectory>{InputDir}</SearchDirectory>
-						<SearchPattern>*.mkv|*.mp4</SearchPattern>
+						<SearchPattern>{ExtensionFilter}</SearchPattern>
 					</Inputs>
 					<Outputs>
 						<Output>Files</Output>

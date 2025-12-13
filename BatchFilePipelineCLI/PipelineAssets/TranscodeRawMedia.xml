@@ -1,10 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+	Transcode Raw Media
+
+	This pipeline will take a series of video files from a local input directory and process them to apply
+	a Handbrake preset over them to reduce their overall size and convert any graphical subtitles into
+	text based subtitles. It outputs them into a separate output directory, maintaining the same directory
+	structure as the input. It uses a manifest file to track which files have already been processed to
+	avoid redundant work.
+
+	Applications:
+	- ffprobe = Read video information to know how to process them
+	- ffmpeg = Extract and remux video files
+	- SubtitleEdit = Convert graphical subtitles to text based subtitles
+	- HandbrakeCLI = CLI Handbrake application that can be used to apply to transcoding preset for size reduction
+
+	Required Inputs:
+	- InputDir = Path to the input directory containing video files to be processed
+	- OutputDir = Path to the output directory where processed files will be saved
+	- HandbrakeManifestPath = The JSON file describing the different Handbrake Presets that can be applied when processing
+-->
+
 <Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles">
 	<Environment>
 		<FFprobe>ffprobe</FFprobe>
 		<FFmpeg>ffmpeg</FFmpeg>
 		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
 		<HandbrakeCLI>HandBrakeCLI</HandbrakeCLI>
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
 	</Environment>
 	<Workflow>
 		<!-- We want to identify a staging directory within which we can store files that will be used for processing -->
@@ -80,7 +102,7 @@
 				<Node Name="Find Video Files" ID="Identification_00" TypeID="FindFilesInDirectoryNode">
 					<Inputs>
 						<SearchDirectory>{InputDir}</SearchDirectory>
-						<SearchPattern>*.mkv|*.mp4</SearchPattern>
+						<SearchPattern>{ExtensionFilter}</SearchPattern>
 					</Inputs>
 					<Outputs>
 						<Output>Files</Output>
