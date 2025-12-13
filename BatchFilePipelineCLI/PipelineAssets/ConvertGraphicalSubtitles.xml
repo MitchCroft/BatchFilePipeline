@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles">
+	<Environment>
+		<FFprobe>ffprobe</FFprobe>
+		<FFmpeg>ffmpeg</FFmpeg>
+		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
+	</Environment>
+	<Workflow>
+		<!-- We want to identify a staging directory within which we can store files that will be used for processing -->
+		<PreProcessGraph>
+			<!-- To make this safer to run on back-to-back executions, we're going to use the current timestamp as an additional marker for the working directory -->
+			<Node Name="Format Time" ID="PreProcess_00" TypeID="FormatDateTimeNode">
+				<Inputs>
+					<FormatString>yyyyMMdd_hhmmss</FormatString>
+				</Inputs>
+				<Outputs>
+					<Output>Timestamp</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to find the path that will be used for the working directory, placed within the output folder -->
+			<Node Name="Assemble Working Directory" ID="PreProcess_01" TypeID="CombinePathNode">
+				<Inputs>
+					<LeftPath>{OutputDir}</LeftPath>
+					<RightPath>Working_{Timestamp}</RightPath>
+				</Inputs>
+				<Outputs>
+					<Output>WorkingDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- We want to export that final directory to the rest of the graph for use -->
+			<Node Name="Export Working Directory" ID="PreProcess_02" TypeID="ExportValuesNode">
+				<Inputs>
+					<WorkingDir>{WorkingDir}</WorkingDir>
+				</Inputs>
+			</Node>
+		</PreProcessGraph>
+
+		<!-- For the main graph, we'll need to find all of the video files in the input directory and run them through the pipeline -->
+		<MainGraph>
+			<!-- For the identification, we just need to find the files that are in the input directory -->
+			<IdentificationGraph>
+				<!-- Locate all of the files of the expected types -->
+				<Node Name="Find Video Files" ID="Identification_00" TypeID="FindFilesInDirectoryNode">
+					<Inputs>
+						<SearchDirectory>{InputDir}</SearchDirectory>
+						<SearchPattern>*.mkv|*.mp4</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>Files</Output>
+					</Outputs>
+					<Connections>
+						<Default>Identification_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Export the collection of files that were identified for use at runtime for processing -->
+				<Node Name="Export Found Files" ID="Identification_01" TypeID="ExportValuesNode">
+					<Inputs>
+						<Identifiers>{Files}</Identifiers>
+					</Inputs>
+				</Node>
+			</IdentificationGraph>
+
+			<!-- Now we can handle the main processing of the files. We will need to chain the different nodes to receive the final output results -->
+			<ProcessGraph>
+				<!-- Check the manifest to see if this identified file has already been processed before -->
+				<Node Name="Check if File has been Processed" ID="Process_00" TypeID="GetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+					</Inputs>
+					<Outputs>
+						<Output>FileState</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- If the file has already been processed, we can just skip testing this file -->
+				<Node Name="Initial Check if File is Processed" ID="Process_01" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{FileState}</LeftValue>
+						<RightValue>Complete</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- True intentionally left blank so that the processing of this file will stop here -->
+						<True></True>
+
+						<!-- If the file has not been processed yet, we will need to start processing the information stored in it -->
+						<False>Process_02</False>
+					</Connections>
+				</Node>
+
+				<!-- Get the relative path of the input file that will be processed -->
+				<Node Name="Get File Relative Path" ID="Process_02" TypeID="GetRelativePathNode">
+					<Inputs>
+						<RelativeTo>{InputDir}</RelativeTo>
+						<Path>{CurrentIdentifier}</Path>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_03</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need to get the set of information for the file that is being processed -->
+				<Node Name="Get Video Meta-Data" ID="Process_03" TypeID="GetVideoDetailsNode">
+					<Inputs>
+						<FFprobe>{FFprobe}</FFprobe>
+						<Target>{CurrentIdentifier}</Target>
+					</Inputs>
+					<Outputs>
+						<Output>FileMetaData</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_04</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need to find all of the subtitle streams that are attached to the video -->
+				<Node Name="Select Streams" ID="Process_04" TypeID="ReflectiveSelectNode">
+					<Inputs>
+						<Source>{FileMetaData}</Source>
+						<Path>Streams</Path>
+					</Inputs>
+					<Outputs>
+						<Output>Streams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_05</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can filter all of the subtitle streams down to just those that are image based -->
+				<Node Name="Isolate Subtitle Streams" ID="Process_05" TypeID="FilterCollectionNode">
+					<Inputs>
+						<Collection>{Streams}</Collection>
+						<SubValue>SubtitleType</SubValue>
+						<Filter>Image</Filter>
+					</Inputs>
+					<Outputs>
+						<Output>SubtitleStreams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_06</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if there are any image based sub-titles, if not, then we don't need to do anything for this file -->
+				<Node Name="Count Image Streams" ID="Process_06" TypeID="CountCollectionNode">
+					<Inputs>
+						<Collection>{SubtitleStreams}</Collection>
+					</Inputs>
+					<Outputs>
+						<Output>ImageSubtitleCount</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_07</Default>
+					</Connections>
+				</Node>
+
+				<!-- If there were no image based subtitle streams, we can be finished with this file and not bother with it again -->
+				<Node Name="Check Subtitles Needing Processing" ID="Process_07" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{ImageSubtitleCount}</LeftValue>
+						<RightValue>0</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We want to mark this off in the manifest so we don't need to do it again -->
+						<True>Process_08</True>
+
+						<!-- We will need to actually process the file to get a useful result -->
+						<False>Process_09</False>
+					</Connections>
+				</Node>
+
+				<!-- Copy the current file from the input to the output, we don't need to do anything with it -->
+				<Node Name="Copy Valid File State" ID="Process_08" TypeID="CopyFileNode">
+					<Inputs>
+						<SourceFileName>{CurrentIdentifier}</SourceFileName>
+						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
+						<Overwrite>True</Overwrite>
+					</Inputs>
+					<Connections>
+						<Default>Process_End</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need to extract all of the subtitles to a file that we can process -->
+				<Node Name="Extract Subtitles" ID="Process_09" TypeID="ExtractSubtitlesNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{CurrentIdentifier}</Source>
+						<Streams>{SubtitleStreams}</Streams>
+						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_10</Default>
+					</Connections>
+				</Node>
+
+				<!-- Now that we have the extracted files, we need to convert them into text files that can be added back to the source file -->
+				<Node Name="Convert Graphic Subs to Text" ID="Process_10" TypeID="ConvertGraphicSubsToTextNode">
+					<Inputs>
+						<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
+						<Streams>{SubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_11</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need the file name isolated for the output process -->
+				<Node Name="Isolate Video File Name" ID="Process_11" TypeID="GetFileNameNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>FileName</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_12</Default>
+					</Connections>
+				</Node>
+
+				<!-- Subtitles are converted, we can now remux our source file with the new subtitles put into place -->
+				<Node Name="Replace Subtitles with Text Versions" ID="Process_12" TypeID="ReplaceSubtitleStreamsNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<SourcePath>{CurrentIdentifier}</SourcePath>
+						<TargetInfo>{FileMetaData}</TargetInfo>
+						<Streams>{SubtitleStreams}</Streams>
+						<ExternalSubtitleDir>{WorkingDir}\{RelativeDir}\Subtitles</ExternalSubtitleDir>
+						<OutputPath>{WorkingDir}\{RelativeDir}\{FileName}</OutputPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_13</Default>
+					</Connections>
+				</Node>
+
+				<!-- Copy the remuxed file from the working directory to the final location -->
+				<Node Name="Move Remuxed File into Place" ID="Process_13" TypeID="MoveFileNode">
+					<Inputs>
+						<SourceFileName>{WorkingDir}\{RelativeDir}\{FileName}</SourceFileName>
+						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
+						<Overwrite>True</Overwrite>
+					</Inputs>
+					<Connections>
+						<Default>Process_End</Default>
+					</Connections>
+				</Node>
+
+				<!-- This can mark off the file in the manifest so that we don't process it again -->
+				<Node Name="Mark Off File In Manifest" ID="Process_End" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+						<Value>Complete</Value>
+					</Inputs>
+				</Node>
+			</ProcessGraph>
+		</MainGraph>
+
+		<!-- When the graph has finished being processed, we can clean up the working directory that is no longer needed -->
+		<PostProcessGraph>
+			<!-- Check to see if we finished the process successfully -->
+			<Node Name="Were we Successful?" ID="PostProcess_00" TypeID="ComparisonNode">
+				<Inputs>
+					<LeftValue>{ProcessedSuccessfully}</LeftValue>
+					<RightValue>True</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- If we weren't successful, then we can exit now and leave the working directory for troubleshooting -->
+					<False></False>
+
+					<!-- If we were, we can clean up the working directory. Don't need it anymore -->
+					<True>PostProcess_01</True>
+				</Connections>
+			</Node>
+
+			<!-- Delete the working directory -->
+			<Node Name="Clean up Working Directory" ID="PostProcess_01" TypeID="DeleteDirectoryNode">
+				<Inputs>
+					<TargetDir>{WorkingDir}</TargetDir>
+				</Inputs>
+			</Node>
+		</PostProcessGraph>
+	</Workflow>
+</Pipeline>
