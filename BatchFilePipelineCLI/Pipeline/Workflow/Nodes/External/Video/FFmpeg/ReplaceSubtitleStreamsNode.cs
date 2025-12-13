@@ -152,13 +152,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
             int persistingSubtitlesCount = preservedStreams.Count(x => x.StreamType == StreamType.Subtitle);
 
             // Force the encoding for the subtitle streams
-            argument.Append($"{string.Join(" ", subtitleStreams.Select((x, i) => $"-c:s:{persistingSubtitlesCount + i} {Path.GetExtension(x.subtitlePath).Substring(1)}"))} ");
+            argument.Append($"{string.Join(" ", subtitleStreams.Select((x, i) => $"-c:s:{persistingSubtitlesCount + i} {GetCodecForContainer(Path.GetExtension(x.subtitlePath), Path.GetExtension(outputPath))}"))} ");
 
             // We can add all of the meta data that did exist on the previous streams
             var metaDataInserts = subtitleStreams
                 .Select((x, i) => (x.stream, i))
                 .Where(x => (x.stream.Tags?.Count ?? 0) != 0)
-                .Select(x => string.Join(" ", x.stream.Tags!.Select(y => $"-metadata:s:{preservedStreams.Length + x.i} {y.Key}={y.Value}")));
+                .Select(x => string.Join(" ", x.stream.Tags!.Select(y => $"-metadata:s:{preservedStreams.Length + x.i} \"{y.Key}\"=\"{y.Value}\"")));
             argument.Append($"{string.Join(" ", metaDataInserts)} ");
 
             // Finally, we have the output path for the file we want to use
@@ -196,6 +196,26 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
                     { _outputProperty.Name, outputPath }
                 }
             );
+        }
+
+        //PRIVATE
+
+        /// <summary>
+        /// Handle the identification of the codec that is to be used for the subtitle based on the container type
+        /// </summary>
+        /// <param name="subtitleExtension">The extension of the subtitle output file that is being included</param>
+        /// <param name="containerExtension">The extension of the file output container that will be used</param>
+        /// <returns>Returns the codec that should be used for displaying the subtitles</returns>
+        private static string GetCodecForContainer(string subtitleExtension, string containerExtension)
+        {
+            switch (containerExtension.ToLower())
+            {
+                default:
+                    Logger.Warning($"[{nameof(ReplaceSubtitleStreamsNode)}] Unexpected container extension '{containerExtension}' when resolving subtitle");
+                    goto case ".mkv";
+                case ".mkv": return subtitleExtension.ToLower().Substring(1);
+                case ".mp4": return "mov_text";
+            }
         }
     }
 }
