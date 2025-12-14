@@ -15,6 +15,7 @@
 	Required Inputs:
 	- InputDir = Path to the input directory containing video files to be processed
 	- OutputDir = Path to the output directory where processed files will be saved
+	- Dictionary = A plain text file with various words that can be used as a basic evaluation of subtitle conversion success
 -->
 
 <Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles">
@@ -23,6 +24,7 @@
 		<FFmpeg>ffmpeg</FFmpeg>
 		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
 		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
+		<MinRequiredConversion>0.95</MinRequiredConversion>
 	</Environment>
 	<Workflow>
 		<!-- We want to identify a staging directory within which we can store files that will be used for processing -->
@@ -255,8 +257,59 @@
 					</Connections>
 				</Node>
 
+				<!-- Evaluate the conversion of the subtitles to see if the process was good enough to be used -->
+				<Node Name="Check Conversion Success" ID="Process_12" TypeID="EstimateSRTConversionSuccessNode">
+					<Inputs>
+						<Streams>{SubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+						<DictionaryFile>{Dictionary}</DictionaryFile>
+					</Inputs>
+					<Outputs>
+						<MinSuccess>SuccessRate</MinSuccess>
+					</Outputs>
+					<Connections>
+						<Default>Process_13</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if the conversion success rate met the threshold set for processing -->
+				<Node Name="Check Conversion Success Threshold" ID="Process_13" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{SuccessRate}</LeftValue>
+						<RightValue>{MinRequiredConversion}</RightValue>
+						<Mode>GreaterThanOrEqual</Mode>
+					</Inputs>
+					<Connections>
+						<!-- If we met the threshold, then we can continue on and finish processing the file -->
+						<True>Process_16</True>
+
+						<!-- We couldn't meet the threshold, might need to review this one manually -->
+						<False>Process_14</False>
+					</Connections>
+				</Node>
+
+				<!-- There aren't any subtitles that need processing, we can mark it off as untouched -->
+				<Node Name="Mark Conversion Meta-Data" ID="Process_14" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Conversion_Threshold_Failed</Value>
+					</Inputs>
+					<Connections>
+						<Default>Process_15</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can force a failure to be recorded for this entry -->
+				<Node Name="Force Failure From Conversion" ID="Process_15" TypeID="FailNode">
+					<Inputs>
+						<Message>Subtitle conversion rate {SuccessRate} was below the set threshold of {MinRequiredConversion} for {CurrentIdentifier}</Message>						
+					</Inputs>
+				</Node>
+
 				<!-- We need the file name isolated for the output process -->
-				<Node Name="Isolate Video File Name" ID="Process_12" TypeID="GetFileNameNode">
+				<Node Name="Isolate Video File Name" ID="Process_16" TypeID="GetFileNameNode">
 					<Inputs>
 						<FilePath>{CurrentIdentifier}</FilePath>
 					</Inputs>
@@ -264,12 +317,12 @@
 						<Output>FileName</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_13</Default>
+						<Default>Process_17</Default>
 					</Connections>
 				</Node>
 
 				<!-- Subtitles are converted, we can now remux our source file with the new subtitles put into place -->
-				<Node Name="Replace Subtitles with Text Versions" ID="Process_13" TypeID="ReplaceSubtitleStreamsNode">
+				<Node Name="Replace Subtitles with Text Versions" ID="Process_17" TypeID="ReplaceSubtitleStreamsNode">
 					<Inputs>
 						<FFmpeg>{FFmpeg}</FFmpeg>
 						<SourcePath>{CurrentIdentifier}</SourcePath>
@@ -279,24 +332,24 @@
 						<OutputPath>{WorkingDir}\{RelativeDir}\{FileName}</OutputPath>
 					</Inputs>
 					<Connections>
-						<Default>Process_14</Default>
+						<Default>Process_18</Default>
 					</Connections>
 				</Node>
 
 				<!-- Copy the remuxed file from the working directory to the final location -->
-				<Node Name="Move Remuxed File into Place" ID="Process_14" TypeID="MoveFileNode">
+				<Node Name="Move Remuxed File into Place" ID="Process_18" TypeID="MoveFileNode">
 					<Inputs>
 						<SourceFileName>{WorkingDir}\{RelativeDir}\{FileName}</SourceFileName>
 						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
 						<Overwrite>True</Overwrite>
 					</Inputs>
 					<Connections>
-						<Default>Process_15</Default>
+						<Default>Process_19</Default>
 					</Connections>
 				</Node>
 
 				<!-- We did the full subtitle conversion for the file -->
-				<Node Name="Mark Conversion Meta-Data" ID="Process_15" TypeID="SetManifestDataNode">
+				<Node Name="Mark Conversion Meta-Data" ID="Process_19" TypeID="SetManifestDataNode">
 					<Inputs>
 						<ManifestPath>{OutputDir}\ConvertGraphicalSubtitles_Manifest.json</ManifestPath>
 						<Identifier>{CurrentIdentifier}</Identifier>

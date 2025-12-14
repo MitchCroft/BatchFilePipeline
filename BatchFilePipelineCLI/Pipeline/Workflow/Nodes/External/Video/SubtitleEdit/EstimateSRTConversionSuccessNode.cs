@@ -166,7 +166,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
                         }
 
                         // This word couldn't be verified, treating as a failure
-                        Logger.Log($"[{nameof(EstimateSRTConversionSuccessNode)}] Unknown word: {word}");
+                        Logger.Log($"[{nameof(EstimateSRTConversionSuccessNode)}] Unknown word '{word}' derived from '{part}'");
                         --validParts;
                     }
 

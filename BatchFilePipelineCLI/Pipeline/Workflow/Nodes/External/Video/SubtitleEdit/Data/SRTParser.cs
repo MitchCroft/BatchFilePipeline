@@ -52,8 +52,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
             }
 
             // Try to parse the time values
-            return TimeSpan.TryParseExact(parts[0], TIMESTAMP_FORMAT, CultureInfo.InvariantCulture, out start) &&
-                   TimeSpan.TryParseExact(parts[1], TIMESTAMP_FORMAT, CultureInfo.InvariantCulture, out end);
+            return TimeSpan.TryParseExact(parts[0].Trim(), TIMESTAMP_FORMAT, CultureInfo.InvariantCulture, out start) &&
+                   TimeSpan.TryParseExact(parts[1].Trim(), TIMESTAMP_FORMAT, CultureInfo.InvariantCulture, out end);
         }
 
         /// <summary>
