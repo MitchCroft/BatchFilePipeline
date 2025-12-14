@@ -105,6 +105,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Da
         [JsonProperty("duration_ts")] public int Duration { get; set; }
         [JsonProperty("duration")] public string? DurationString { get; set; }
         [JsonProperty("extradata")] public string? ExtraData { get; set; }
+
+        /*----------Functions----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// Format a string representation of the subtitle stream
+        /// </summary>
+        public override string ToString() => $"{Index} ({CodecName})";
     }
 
     /// <summary>
