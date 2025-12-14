@@ -1,5 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.PropertyResolver;
+using BatchFilePipelineCLI.Utility.ExecutionState;
 using Renci.SshNet;
 using System;
 using System.Collections.Generic;
@@ -78,6 +79,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             // Try to make the SSH connection
             using var sftp = new SftpClient(connectionInfo);
             sftp.Connect();
+
+            // We need to ensure that the system doesn't sleep during file transfers
+            using var marker = ExecutionStateHandler.Push();
 
             // Ensure that the target directory exists
             await CreateRemoteDirectoryAsync(sftp, Path.GetDirectoryName(destinationPath)!, cancellationToken);

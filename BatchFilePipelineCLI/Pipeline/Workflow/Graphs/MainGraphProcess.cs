@@ -178,7 +178,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                     else
                     {
                         // We want to keep the PC running while this process is running
-                        using var stateMarker = new ExecutionStateMarker();
+                        using var stateMarker = ExecutionStateHandler.Push();
 
                         // Handle all of the identifiers that were identified
                         foreach (var id in identifiers)

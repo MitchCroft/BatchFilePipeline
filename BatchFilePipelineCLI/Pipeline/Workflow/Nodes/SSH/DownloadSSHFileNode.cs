@@ -1,5 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.PropertyResolver;
+using BatchFilePipelineCLI.Utility.ExecutionState;
 using Renci.SshNet;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
@@ -73,6 +74,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             // Try to make the SSH connection
             using var sftp = new SftpClient(connectionInfo);
             sftp.Connect();
+
+            // We need to ensure that the system doesn't sleep during file transfers
+            using var marker = ExecutionStateHandler.Push();
 
             // Download the file from the remote server to disc for processing
             Logger.Log($"[{nameof(DownloadSSHFileNode)}] Creating directory for '{destinationPath}'");
