@@ -225,12 +225,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 
                 // We need to try and find the node that is to be used
                 string nextNode = nodeOutput.Next ?? DefaultNextNodeKey;
-                if (activeNode.Connections.TryGetValue(nextNode, out var nextNodeId) == false)
+                if (activeNode.Connections.TryGetValue(nextNode, out var nextNodeId) == false &&
+                    activeNode.Connections.TryGetValue(DefaultNextNodeKey, out nextNodeId) == false)
                 {
                     return new ExecutionResult
                     (
                         404,
-                        $"[{nameof(Graph)}] Encountered an error while processing node '{activeNode}'. Unable to find a matching connection for the selection case '{nextNode}'"
+                        $"[{nameof(Graph)}] Encountered an error while processing node '{activeNode}'. Unable to find a matching connection for the selection case '{(nextNode != DefaultNextNodeKey ? $"{nextNode}/{DefaultNextNodeKey}" : nextNode)}'"
                     );
                 }
 
