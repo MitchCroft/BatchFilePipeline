@@ -259,21 +259,8 @@
 					</Connections>
 				</Node>
 
-				<!-- We need to extract all of the subtitles to a file that we can process -->
-				<Node Name="Extract Subtitles" ID="Process_09" TypeID="ExtractSubtitlesNode">
-					<Inputs>
-						<FFmpeg>{FFmpeg}</FFmpeg>
-						<Source>{OutputFile}</Source>
-						<Streams>{SubtitleStreams}</Streams>
-						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
-					</Inputs>
-					<Connections>
-						<Default>Process_10</Default>
-					</Connections>
-				</Node>
-
 				<!-- We're going to try and convert any image based subtitles that exist -->
-				<Node Name="Isolate Graphical Subtitle Streams" ID="Process_10" TypeID="FilterCollectionNode">
+				<Node Name="Isolate Graphical Subtitle Streams" ID="Process_09" TypeID="FilterCollectionNode">
 					<Inputs>
 						<Collection>{Streams}</Collection>
 						<SubValue>SubtitleType</SubValue>
@@ -283,12 +270,12 @@
 						<Output>GraphicSubtitleStreams</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_11</Default>
+						<Default>Process_10</Default>
 					</Connections>
 				</Node>
 
 				<!-- Check to see if there are any image based sub-titles, if not, then we don't need to do anything for this file -->
-				<Node Name="Count Image Streams" ID="Process_11" TypeID="CountCollectionNode">
+				<Node Name="Count Image Streams" ID="Process_10" TypeID="CountCollectionNode">
 					<Inputs>
 						<Collection>{GraphicSubtitleStreams}</Collection>
 					</Inputs>
@@ -296,22 +283,35 @@
 						<Output>ImageSubtitleCount</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_12</Default>
+						<Default>Process_11</Default>
 					</Connections>
 				</Node>
 
 				<!-- If there were no image based subtitle streams, we can be finished with this file and not bother with it again -->
-				<Node Name="Check Subtitles Needing Processing" ID="Process_12" TypeID="ComparisonNode">
+				<Node Name="Check Subtitles Needing Processing" ID="Process_11" TypeID="ComparisonNode">
 					<Inputs>
 						<LeftValue>{ImageSubtitleCount}</LeftValue>
 						<RightValue>0</RightValue>
 					</Inputs>
 					<Connections>
 						<!-- If there are no image based subtitles, we can skip the conversion step -->
-						<True>Process_17</True>
+						<True>Process_20</True>
 
 						<!-- We will actually need to process the conversion of the subtitles into text -->
-						<False>Process_13</False>
+						<False>Process_12</False>
+					</Connections>
+				</Node>
+
+				<!-- We need to extract all of the subtitles to a file that we can process -->
+				<Node Name="Extract Subtitles" ID="Process_12" TypeID="ExtractSubtitlesNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{OutputFile}</Source>
+						<Streams>{SubtitleStreams}</Streams>
+						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_13</Default>
 					</Connections>
 				</Node>
 
@@ -383,20 +383,8 @@
 					</Connections>
 				</Node>
 
-				<!-- Copy the remuxed file from the working directory to the final location -->
-				<Node Name="Move Final File into Place" ID="Process_18" TypeID="MoveFileNode">
-					<Inputs>
-						<SourceFileName>{OutputFile}</SourceFileName>
-						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
-						<Overwrite>True</Overwrite>
-					</Inputs>
-					<Connections>
-						<Default>Process_19</Default>
-					</Connections>
-				</Node>
-
 				<!-- Get the name of the relative directory so the subtitles will be placed in a folder of the target file name -->
-				<Node Name="Get Relative Parent Directory" ID="Process_19" TypeID="GetDirectoryNameNode">
+				<Node Name="Get Relative Parent Directory" ID="Process_18" TypeID="GetDirectoryNameNode">
 					<Inputs>
 						<FilePath>{RelativeDir}</FilePath>
 					</Inputs>
@@ -404,16 +392,28 @@
 						<Output>RelativeParentDir</Output>
 					</Outputs>
 					<Connections>
-						<Default>Process_20</Default>
+						<Default>Process_19</Default>
 					</Connections>
 				</Node>
 
 				<!-- Copy the subtitles extracted to the storage location for later use -->
-				<Node Name="Archive Subtitle Directory" ID="Process_20" TypeID="CopyDirectoryNode">
+				<Node Name="Archive Subtitle Directory" ID="Process_19" TypeID="CopyDirectoryNode">
 					<Inputs>
 						<TargetDir>{WorkingDir}\{RelativeDir}\Subtitles</TargetDir>
 						<DestinationPath>{SubtitleDir}\{RelativeParentDir}</DestinationPath>
 						<RenameDirectory>{FileName}</RenameDirectory>
+					</Inputs>
+					<Connections>
+						<Default>Process_20</Default>
+					</Connections>
+				</Node>
+
+				<!-- Copy the remuxed file from the working directory to the final location -->
+				<Node Name="Move Final File into Place" ID="Process_20" TypeID="MoveFileNode">
+					<Inputs>
+						<SourceFileName>{OutputFile}</SourceFileName>
+						<DestinationFileName>{OutputDir}\{RelativeDir}</DestinationFileName>
+						<Overwrite>True</Overwrite>
 					</Inputs>
 					<Connections>
 						<Default>Process_End</Default>
