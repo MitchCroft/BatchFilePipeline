@@ -61,7 +61,12 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
             "The maximum success rate for all of the streams that were processed",
             typeof(float)
         );
-
+        private readonly Property _summaryProperty = Property.Create
+        (
+            "Summary",
+            "A summary of the conversion estimates across all streams supplied",
+            typeof(ConversionSuccessManifest)
+        );
 
         /*----------Functions----------*/
         //PUBLIC
@@ -76,7 +81,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => [_averageSuccessProperty, _minSuccessProperty, _maxSuccessProperty];
+        public IList<Property> GetOutputProperties() => [_averageSuccessProperty, _minSuccessProperty, _maxSuccessProperty, _summaryProperty];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -97,7 +102,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
             List<SubtitleMarker> markerBuffer = new();
 
             // We need to track some values for the streams that were processed
-            int totalStreams = 0;
+            List<SubtitleStreamConversionSummary> streamSummaries = new List<SubtitleStreamConversionSummary>();
             float averageSuccess = 0f;
             float minSuccess = 1f;
             float maxSuccess = 0f;
@@ -111,9 +116,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
                     Logger.Log($"[{nameof(EstimateSRTConversionSuccessNode)}] Unable to process '{stream}', it's not a {nameof(SubtitleDataStream)}");
                     continue;
                 }
-
-                // An additional stream being processed
-                ++totalStreams;
 
                 // We need to find the subtitle file that can be evaluated for success
                 if (subtitleStream.TryFindSubtitleFile(sourceDir, ".srt", out var subtitleFile) == false)
@@ -130,6 +132,12 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
                     minSuccess = 0f;
                     continue;
                 }
+
+                // Create a new summary object for the different elements
+                SubtitleStreamConversionSummary summary = new SubtitleStreamConversionSummary
+                {
+                    Index = subtitleStream.Index
+                };
 
                 // Determine the percentage of valid words in the resulting markers
                 float validMarkers = 0f;
@@ -167,6 +175,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
 
                         // This word couldn't be verified, treating as a failure
                         Logger.Log($"[{nameof(EstimateSRTConversionSuccessNode)}] Unknown word '{word}' derived from '{part}'");
+                        if (summary.FailedWords.Contains(part) == false)
+                        {
+                            summary.FailedWords.Add(part);
+                        }
                         --validParts;
                     }
 
@@ -185,10 +197,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
                 {
                     maxSuccess = percentage;
                 }
+
+                // Update the final stream values
+                summary.Successful = percentage;
+                streamSummaries.Add(summary);
             }
 
             // If there were no streams, invalidate all of the return values
-            if (totalStreams == 0)
+            if (streamSummaries.Count == 0)
             {
                 averageSuccess = 0f;
                 minSuccess = 0f;
@@ -198,8 +214,17 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
             // Otherwise, calculate the average to be used
             else
             {
-                averageSuccess /= totalStreams;
+                averageSuccess /= streamSummaries.Count;
             }
+
+            // We have the final manifest values required
+            ConversionSuccessManifest manifest = new ConversionSuccessManifest
+            {
+                Streams = streamSummaries,
+                AverageSuccess = averageSuccess,
+                MinSuccess = minSuccess,
+                MaxSuccess = maxSuccess,
+            };
 
             // We have our results from the evaluation
             return ValueTask.FromResult(new ExecutionResult
@@ -208,7 +233,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
                 {
                     { _averageSuccessProperty.Name, averageSuccess },
                     { _maxSuccessProperty.Name, maxSuccess },
-                    { _minSuccessProperty.Name, minSuccess }
+                    { _minSuccessProperty.Name, minSuccess },
+                    { _summaryProperty.Name, manifest }
                 }
             ));
         }

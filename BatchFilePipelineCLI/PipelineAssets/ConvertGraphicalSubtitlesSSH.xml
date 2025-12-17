@@ -19,7 +19,7 @@
 	- Dictionary = A plain text file with various words that can be used as a basic evaluation of subtitle conversion success
 -->
 
-<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles">
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Convert Graphical Subtitles SSH">
 	<Environment>
 		<FFprobe>ffprobe</FFprobe>
 		<FFmpeg>ffmpeg</FFmpeg>
