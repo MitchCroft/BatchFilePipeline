@@ -149,7 +149,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                 return new ExecutionResult
                                 (
                                     422,
-                                    $"[{nameof(Graph)}] Couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}'"
+                                    $"[{nameof(Graph)}] Couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}' for the Node '{activeNode}'"
                                 );
                             }
 
