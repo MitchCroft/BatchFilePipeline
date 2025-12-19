@@ -1,12 +1,8 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using Renci.SshNet;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
 {
@@ -84,7 +80,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             using var marker = ExecutionStateHandler.Push();
 
             // Ensure that the target directory exists
-            await CreateRemoteDirectoryAsync(sftp, Path.GetDirectoryName(destinationPath)!, cancellationToken);
+            await sftp.CreateRemoteDirectoryAsync(Path.GetDirectoryName(destinationPath)!, cancellationToken);
             if (cancellationToken.IsCancellationRequested == true)
             {
                 return new ExecutionResult();
@@ -100,7 +96,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             {
                 return new ExecutionResult();
             }
-            Logger.Log($"[{nameof(UploadSSHFileNode)}] Uploaded file '{targetFile}' to remote '{destinationPath}'");
+            Logger.Success($"[{nameof(UploadSSHFileNode)}] Uploaded file '{targetFile}' to remote '{destinationPath}'");
 
             // We have the results of the file upload
             return new ExecutionResult
@@ -110,48 +106,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
                     { _outputProperty.Name, destinationPath }
                 }
             );
-        }
-
-        //PRIVATE
-
-        /// <summary>
-        /// Ensure that a directory exists on the remote SSH server, creating it if it does not
-        /// </summary>
-        /// <param name="sftp">The remote client that will be used to poll and create directories</param>
-        /// <param name="path">The path of the file that needs to be processed</param>
-        /// <param name="cancellationToken">Cancellation token that controls the lifespan of the operation</param>
-        private static async ValueTask CreateRemoteDirectoryAsync(SftpClient sftp,
-                                                                  string path,
-                                                                  CancellationToken cancellationToken)
-        {
-            // Split the path into its segments
-            string[] segments = path.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            // Iterate through each segment, building up the path as we go
-            string current = string.Empty;
-            foreach (var part in segments)
-            {
-                // Check if this section exists
-                current += '/' + part;
-                bool stageExists = await sftp.ExistsAsync(current, cancellationToken);
-                if (cancellationToken.IsCancellationRequested == true)
-                {
-                    return;
-                }
-                if (stageExists == true)
-                {
-                    continue;
-                }
-
-                // We need to create the directory stage
-                Logger.Log($"[{nameof(UploadSSHFileNode)}] Creating remote directory '{current}'");
-                await sftp.CreateDirectoryAsync(current, cancellationToken);
-                if (cancellationToken.IsCancellationRequested == true)
-                {
-                    return;
-                }
-                Logger.Log($"[{nameof(UploadSSHFileNode)}] Created remote directory '{current}'");
-            }
         }
     }
 }
