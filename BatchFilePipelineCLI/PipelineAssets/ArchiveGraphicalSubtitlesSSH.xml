@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Archive Graphical Subtitles SSH
+
+	This pipeline will read through a collection of video files in a remote storage location
+	and check to see if they have any graphical subtitles. If they do, those subtitles will
+	be extracted and archived in a storage location while a remuxed file without those data
+	streams will be created and returned for use
+
+	Applications:
+	- ffprobe = Read video information to know how to process them
+	- ffmpeg = Extract and remux video files
+	- SubtitleEdit = Convert graphical subtitles to text based subtitles
+
+	Required inputs:
+	- InputDir = The directory on the remote server where the input files should be processed from
+	- IntermediateDir = A local directory where the files can be placed while processing them
+	- OutputDir = The directory on the remote server where the files can be output to when finished processing
+	- ArchiveDir = The directory on the remote server where the extracted subtitle files can be placed after processing
+	- Dictionary = A plain text file with various words that can be used as a basic evaluation of subtitle conversion success
+-->
+
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Archive Graphical Subtitles SSH">
+	<!-- Define some basic settings that will be used to process the collection of files -->
+	<Environment>
+		<FFprobe>ffprobe</FFprobe>
+		<FFmpeg>ffmpeg</FFmpeg>
+		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
+		<UploadUnmodifiedFile>False</UploadUnmodifiedFile>
+	</Environment>
+
+	<Workflow>
+		<!-- We want to identify a staging directory within which we can store files that will be used for processing -->
+		<PreProcessGraph>
+			<!-- To make this safer to run on back-to-back executions, we're going to use the current timestamp as an additional marker for the working directory -->
+			<Node Name="Format Time" ID="PreProcess_00" TypeID="FormatDateTimeNode">
+				<Inputs>
+					<FormatString>yyyyMMdd_hhmmss</FormatString>
+				</Inputs>
+				<Outputs>
+					<Output>Timestamp</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to find the path that will be used for the working directory, placed within the output folder -->
+			<Node Name="Assemble Working Directory" ID="PreProcess_01" TypeID="CombinePathNode">
+				<Inputs>
+					<LeftPath>{IntermediateDir}</LeftPath>
+					<RightPath>Working_{Timestamp}</RightPath>
+				</Inputs>
+				<Outputs>
+					<Output>WorkingDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- We want to export that final directory to the rest of the graph for use -->
+			<Node Name="Export Working Directory" ID="PreProcess_02" TypeID="ExportValuesNode">
+				<Inputs>
+					<WorkingDir>{WorkingDir}</WorkingDir>
+				</Inputs>
+			</Node>
+		</PreProcessGraph>
+
+		<!-- For the main graph, we'll need to find all of the video files in the input directory and run them through the pipeline -->
+		<MainGraph>
+			<!-- For the identification, we just need to find the files that are in the input directory -->
+			<IdentificationGraph>
+				<!-- Locate all of the files of the expected types -->
+				<Node Name="Find Video Files" ID="Identification_00" TypeID="FindFilesInSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<SearchDirectory>{InputDir}</SearchDirectory>
+						<SearchPattern>{ExtensionFilter}</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>Files</Output>
+					</Outputs>
+					<Connections>
+						<Default>Identification_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Export the collection of files that were identified for use at runtime for processing -->
+				<Node Name="Export Found Files" ID="Identification_01" TypeID="ExportValuesNode">
+					<Inputs>
+						<Identifiers>{Files}</Identifiers>
+					</Inputs>
+				</Node>
+			</IdentificationGraph>
+
+			<!-- Now we can handle the main processing of the files. We need to chain together the different nodes to process the final result -->
+			<ProcessGraph>
+				<!-- Check if the file has already been processed, can skip if done already. Get the existing state that is in the working manifest -->
+				<Node Name="Check if File has Been Processed" ID="Process_00" TypeID="GetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ArchiveGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+					</Inputs>
+					<Outputs>
+						<Output>FileState</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if the file was processed already -->
+				<Node Name="Compare Initial State" ID="Process_01" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{FileState}</LeftValue>
+						<RightValue>Complete</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- Intentionally left blank so we skip processing of this file -->
+						<True></True>
+
+						<!-- Otherwise, we can continue on to processing the file -->
+						<False>Process_02</False>
+					</Connections>
+				</Node>
+
+				<!-- We need to get component parts of the file that is being processed so we know how to format the working path -->
+				<Node Name="Get File Extension" ID="Process_02" TypeID="GetFileExtensionNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>FileExtension</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_03</Default>
+					</Connections>
+				</Node>
+				<Node Name="Get File Relative Path" ID="Process_03" TypeID="GetRelativePathNode">
+					<Inputs>
+						<RelativeTo>{InputDir}</RelativeTo>
+						<Path>{CurrentIdentifier}</Path>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_04</Default>
+					</Connections>
+				</Node>
+
+				<!-- To be able to process anything to do with the file, we'll need to download it so we can use it locally -->
+				<Node Name="Download Remote File" ID="Process_04" TypeID="DownloadSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{CurrentIdentifier}</TargetFile>
+						<DestinationPath>{WorkingDir}\{RelativeDir}\Source{FileExtension}</DestinationPath>
+					</Inputs>
+					<Outputs>
+						<Output>RemoteFile</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_05</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need to investigate the file to see if there are any streams that we need to process -->
+				<Node Name="Get Video Meta Data" ID="Process_05" TypeID="GetVideoDetailsNode">
+					<Inputs>
+						<FFprobe>{FFprobe}</FFprobe>
+						<Target>{RemoteFile}</Target>
+					</Inputs>
+					<Outputs>
+						<Output>FileMetaData</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_06</Default>
+					</Connections>
+				</Node>
+				<Node Name="Select Streams" ID="Process_06" TypeID="ReflectiveSelectNode">
+					<Inputs>
+						<Source>{FileMetaData}</Source>
+						<Path>Streams</Path>
+					</Inputs>
+					<Outputs>
+						<Output>Streams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_07</Default>
+					</Connections>
+				</Node>
+				<Node Name="Isolate Subtitle Streams" ID="Process_07" TypeID="FilterCollectionNode">
+					<Inputs>
+						<Collection>{Streams}</Collection>
+						<SubValue>SubtitleType</SubValue>
+						<Filter>Image</Filter>
+					</Inputs>
+					<Outputs>
+						<Output>GraphicSubtitleStreams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_08</Default>
+					</Connections>
+				</Node>
+
+				<!-- If there are no graphical subtitle streams in the file, then we can just mark it off as complete -->
+				<Node Name="Count Image Streams" ID="Process_08" TypeID="CountCollectionNode">
+					<Inputs>
+						<Collection>{GraphicSubtitleStreams}</Collection>
+					</Inputs>
+					<Outputs>
+						<Output>GraphicalSubtitleCount</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_09</Default>
+					</Connections>
+				</Node>
+				<Node Name="Check Subtitles Need Processing" ID="Process_09" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{GraphicalSubtitleCount}</LeftValue>
+						<RightValue>0</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We don't need to do anything with the file, we can just finish up processing it -->
+						<True>Process_10</True>
+
+						<!-- We will need to run the file through the main process to get the output -->
+						<False>Process_13</False>
+					</Connections>
+				</Node>
+
+				<!-- We can finish processing a file that doesn't need to have any changes applied to it -->
+				<Node Name="Should Upload Unmodified File" ID="Process_10" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{UploadUnmodifiedFile}</LeftValue>
+						<RightValue>True</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We want to process an upload of the file to the output location without making any changes to it -->
+						<True>Process_11</True>
+
+						<!-- We don't want to upload the file, we can just mark the unmodified state in the manifest -->
+						<False>Process_12</False>
+					</Connections>
+				</Node>
+				<Node Name="Upload Unmodified File" ID="Process_11" TypeID="UploadSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{RemoteFile}</TargetFile>
+						<DestinationPath>{OutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_12</Default>
+					</Connections>
+				</Node>
+				<Node Name="Flag No Changes State" ID="Process_12" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ArchiveGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Untouched</Value>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can extract the subtitles from the file and try to convert the subtitles into a standard text format -->
+				<Node Name="Extract Subtitles" ID="Process_13" TypeID="ExtractSubtitlesNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{RemoteFile}</Source>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_14</Default>
+					</Connections>
+				</Node>
+				<Node Name="Convert Graphic Subtitles to Text" ID="Process_14" TypeID="ConvertGraphicSubsToTextNode">
+					<Inputs>
+						<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_15</Default>
+					</Connections>
+				</Node>
+				<Node Name="Check Conversion Success" ID="Process_15" TypeID="EstimateSRTConversionSuccessNode">
+					<Inputs>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+						<DictionaryFile>{Dictionary}</DictionaryFile>
+					</Inputs>
+					<Outputs>
+						<Summary>ConversionSummary</Summary>
+					</Outputs>
+					<Connections>
+						<Default>Process_16</Default>
+					</Connections>
+				</Node>
+				<Node Name="Output Conversion Summary" ID="Process_16" TypeID="JSONSerialiseToDiskNode">
+					<Inputs>
+						<Value>{ConversionSummary}</Value>
+						<OutputPath>{WorkingDir}\{RelativeDir}\Subtitles\Conversion.json</OutputPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_17</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can remove the graphical subtitle streams from the file, they aren't needed anymore -->
+				<Node Name="Isolate Video File Name" ID="Process_17" TypeID="GetFileNameNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>FileName</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_18</Default>
+					</Connections>
+				</Node>
+				<Node Name="Remove Graphical Subtitle Streams" ID="Process_18" TypeID="RemoveStreamsNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{RemoteFile}</Source>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<TargetInfo>{FileMetaData}</TargetInfo>
+						<OutputPath>{WorkingDir}\{RelativeDir}\Remux\{FileName}</OutputPath>
+					</Inputs>
+					<Outputs>
+						<Output>RemuxFile</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_19</Default>
+					</Connections>
+				</Node>
+
+				<!-- Upload the extracted subtitle files to their archive directory -->
+				<Node Name="Get Relative Parent Directory" ID="Process_19" TypeID="GetDirectoryNameNode">
+					<Inputs>
+						<FilePath>{RelativeDir}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeParentDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_20</Default>
+					</Connections>
+				</Node>
+				<Node Name="Archive Subtitle Directory" ID="Process_20" TypeID="UploadSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetDir>{WorkingDir}\{RelativeDir}\Subtitles</TargetDir>
+						<DestinationPath>{ArchiveDir}/{RelativeParentDir}</DestinationPath>
+						<RenameDirectory>{FileName}</RenameDirectory>
+					</Inputs>
+					<Connections>
+						<Default>Process_21</Default>
+					</Connections>
+				</Node>
+
+				<!-- Upload the stripped back file to the output location for use -->
+				<Node Name="Upload Corrected File" ID="Process_21" TypeID="UploadSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{RemuxFile}</TargetFile>
+						<DestinationPath>{OutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_22</Default>
+					</Connections>
+				</Node>
+				<Node Name="Flag Archived State" ID="Process_22" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ArchiveGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>Status</Key>
+						<Value>Archived</Value>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- We have finished with the file, we can mark it off as done so we don't process it again -->
+				<Node Name="Mark Off File in Manifest" ID="Process_End_00" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\ArchiveGraphicalSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+						<Value>Complete</Value>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_01</Default>
+					</Connections>
+				</Node>
+				<Node Name="Delete Working Directory" ID="Process_End_01" TypeID="DeleteDirectoryNode">
+					<Inputs>
+						<TargetDir>{WorkingDir}\{RelativeDir}</TargetDir>
+					</Inputs>
+				</Node>
+			</ProcessGraph>
+		</MainGraph>
+
+		<!-- When the graph has finished processing, we can clean up the working directory that is no longer needed -->
+		<PostProcessGraph>
+			<Node Name="Was Processing Successful?" ID="PostProcess_00" TypeID="ComparisonNode">
+				<Inputs>
+					<LeftValue>{ProcessedSuccessfully}</LeftValue>
+					<RightValue>True</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- If we were, we can clean up the working directory. Don't need it anymore -->
+					<True>PostProcess_01</True>
+
+					<!-- If we weren't successful, then we can exit now and leave the working directory for troubleshooting -->
+					<False></False>
+				</Connections>
+			</Node>
+			<Node Name="Clean up Working Directory" ID="PostProcess_01" TypeID="DeleteDirectoryNode">
+				<Inputs>
+					<TargetDir>{WorkingDir}</TargetDir>
+				</Inputs>
+			</Node>
+		</PostProcessGraph>
+	</Workflow>
+</Pipeline>
