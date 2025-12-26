@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Transcode Raw Media With Upload
+
+	This pipeline will read through a collection of video files that are located in a local
+	directory and apply a Handbrake transcode profile to them to compress their overall
+	footprint. The subtitles of the resulting file will then be extracted and archived
+	before the file is completed, with the option to upload the files directly to the server
+	location or store them in a local directory.
+
+	Applications:
+	- ffprobe = Read video information to know how to process them
+	- ffmpeg = Extract and remux video files
+	- SubtitleEdit = Convert graphical subtitles to text based subtitles
+	- HandbrakeCLI = CLI Handbrake application that can be used to apply to transcoding preset for size reduction
+
+	Required inputs:
+	- InputDir = The directory on the remote server where the input files should be processed from
+	- IntermediateDir = A local directory where the files can be placed while processing them
+	- ServerOutputDir = The directory on the remote server where the files can be output to when finished processing and uploading
+	- LocalOutputDir = The directory on the current machine where the files can be output to when finished processing and not uploading
+	- ServerSubtitleDir = The directory on the remote server where the extracted subtitle files can be placed after processing
+	- LocalSubtitleDir = Path to the output directory where extracted subtitles will be saved
+	- HandbrakeManifestPath = The JSON file describing the different Handbrake Presets that can be applied when processing
+	- Dictionary = A plain text file with various words that can be used as a basic evaluation of subtitle conversion success
+-->
+
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Transcode Raw Media With Upload">
+	<!-- These are the master settings that will be used to control the pipeline process -->
+	<Environment>
+		<FFprobe>ffprobe</FFprobe>
+		<FFmpeg>ffmpeg</FFmpeg>
+		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
+		<HandbrakeCLI>HandBrakeCLI</HandbrakeCLI>
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
+		<HardwareAcceleration>False</HardwareAcceleration>
+	</Environment>
+	<Workflow>
+		<!-- There are some common elements that will be shared for all of the files that are processed in the pipeline -->
+		<PreProcessGraph>
+			<!-- We can read in the manifest of different handbrake preset options from which to choose when transcoding -->
+			<Node Name="Read in Handbrake Preset Manifest" ID="PreProcess_00" TypeID="LoadExternalHandbrakePresetsNode">
+				<Inputs>
+					<ManifestPath>{HandbrakeManifestPath}</ManifestPath>
+				</Inputs>
+				<Outputs>
+					<Output>HandbrakePresetManifest</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Select just the presets in the manifest that we can use for processing -->
+			<Node Name="Isolate Loaded Handbrake Presets" ID="PreProcess_01" TypeID="ReflectiveSelectNode">
+				<Inputs>
+					<Source>{HandbrakePresetManifest}</Source>
+					<Path>PresetList</Path>
+				</Inputs>
+				<Outputs>
+					<Output>HandbrakePresets</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- To make this safer to run on back-to-back executions, we're going to use the current timestamp as an additional marker for the working directory -->
+			<Node Name="Format Time" ID="PreProcess_02" TypeID="FormatDateTimeNode">
+				<Inputs>
+					<FormatString>yyyyMMdd_hhmmss</FormatString>
+				</Inputs>
+				<Outputs>
+					<Output>Timestamp</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_03</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to find the path that will be used for the working directory, placed within the output folder -->
+			<Node Name="Assemble Working Directory" ID="PreProcess_03" TypeID="CombinePathNode">
+				<Inputs>
+					<LeftPath>{IntermediateDir}</LeftPath>
+					<RightPath>Working_{Timestamp}</RightPath>
+				</Inputs>
+				<Outputs>
+					<Output>WorkingDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_04</Default>
+				</Connections>
+			</Node>
+
+			<!-- We want to know if we should be uploading the resulting files to the server or just storing them locally -->
+			<Node Name="Prompt For Upload State" ID="PreProcess_04" TypeID="UserBranchNode">
+				<Inputs>
+					<Prompt>Do you want to upload the resulting files to the SSH server or store them locally?</Prompt>
+					<OptionsText>Upload|Local</OptionsText>
+					<DefaultSelection>1</DefaultSelection>
+				</Inputs>
+				<Outputs>
+					<SelectedValue>ResultHandler</SelectedValue>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_05</Default>
+				</Connections>
+			</Node>
+
+			<!-- We want to export that final directory to the rest of the graph for use -->
+			<Node Name="Export Established Values" ID="PreProcess_05" TypeID="ExportValuesNode">
+				<Inputs>
+					<WorkingDir>{WorkingDir}</WorkingDir>
+					<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
+					<ResultHandler>{ResultHandler}</ResultHandler>
+				</Inputs>
+			</Node>
+		</PreProcessGraph>
+
+		<!-- The main graph is going to run through all of the input files and process their final output result for use -->
+		<MainGraph>
+			<!-- For the identification, we just need to find the files that are in the input directory -->
+			<IdentificationGraph>
+				<!-- Locate all of the files of the expected types -->
+				<Node Name="Find Video Files" ID="Identification_00" TypeID="FindFilesInDirectoryNode">
+					<Inputs>
+						<SearchDirectory>{InputDir}</SearchDirectory>
+						<SearchPattern>{ExtensionFilter}</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>Files</Output>
+					</Outputs>
+					<Connections>
+						<Default>Identification_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Export the collection of files that were identified for use at runtime for processing -->
+				<Node Name="Export Found Files" ID="Identification_01" TypeID="ExportValuesNode">
+					<Inputs>
+						<Identifiers>{Files}</Identifiers>
+					</Inputs>
+				</Node>
+			</IdentificationGraph>
+
+			<!-- Now we can handle the main processing of the file. We will need to chain together the different nodes to receive the final output -->
+			<ProcessGraph>
+				<!-- Check if the file has already been processed, can skip if done already -->
+				<Node Name="Check if File has been Processed" ID="Process_00" TypeID="GetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\TranscodeRawMediaWithUpload_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+					</Inputs>
+					<Outputs>
+						<Output>FileState</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_01</Default>
+					</Connections>
+				</Node>
+				<Node Name="Compare Initial State" ID="Process_01" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{FileState}</LeftValue>
+						<RightValue>Complete</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- True intentionally left blank so that the processing of this file will stop here -->
+						<True></True>
+
+						<!-- If the file has not been processed yet, we will need to start processing the information stored in it -->
+						<False>Process_02</False>
+					</Connections>
+				</Node>
+
+				<!-- Get the relative path of the input file that will be processed, so we can create unique directories to work with the file -->
+				<Node Name="Get File Relative Path" ID="Process_02" TypeID="GetRelativePathNode">
+					<Inputs>
+						<RelativeTo>{InputDir}</RelativeTo>
+						<Path>{CurrentIdentifier}</Path>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_03</Default>
+					</Connections>
+				</Node>
+
+				<!-- We want to transcode the file to be smaller in size and consistent with the other files -->
+				<Node Name="Get Video Meta-Data" ID="Process_03" TypeID="GetVideoDetailsNode">
+					<Inputs>
+						<FFprobe>{FFprobe}</FFprobe>
+						<Target>{CurrentIdentifier}</Target>
+					</Inputs>
+					<Outputs>
+						<Output>FileMetaData</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_04</Default>
+					</Connections>
+				</Node>
+				<Node Name="Find Handbrake Preset Best Fit" ID="Process_04" TypeID="FindHandbrakePresetForVideoNode">
+					<Inputs>
+						<VideoInfo>{FileMetaData}</VideoInfo>
+						<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
+					</Inputs>
+					<Outputs>
+						<Output>TranscodePreset</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_05</Default>
+					</Connections>
+				</Node>
+				<Node Name="Transcode Raw Video" ID="Process_05" TypeID="TranscodeVideoNode">
+					<Inputs>
+						<Handbrake>{HandbrakeCLI}</Handbrake>
+						<VideoPath>{CurrentIdentifier}</VideoPath>
+						<Preset>{TranscodePreset}</Preset>
+						<OutputDir>{WorkingDir}\{RelativeDir}\Transcode</OutputDir>
+						<AllowHardwareAcceleration>{HardwareAcceleration}</AllowHardwareAcceleration>
+						<AdditionalProcessArgs>--markers --preset-import-file "{HandbrakeManifestPath}"</AdditionalProcessArgs>
+					</Inputs>
+					<Outputs>
+						<Output>TranscodeFile</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_06</Default>
+					</Connections>
+				</Node>
+
+				<!-- Now that we have the smaller file, we want to identify any image based subtitles that are in the file -->
+				<Node Name="Refresh Video Meta-Data" ID="Process_06" TypeID="GetVideoDetailsNode">
+					<Inputs>
+						<FFprobe>{FFprobe}</FFprobe>
+						<Target>{TranscodeFile}</Target>
+					</Inputs>
+					<Outputs>
+						<Output>FileMetaData</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_07</Default>
+					</Connections>
+				</Node>
+				<Node Name="Select Streams" ID="Process_07" TypeID="ReflectiveSelectNode">
+					<Inputs>
+						<Source>{FileMetaData}</Source>
+						<Path>Streams</Path>
+					</Inputs>
+					<Outputs>
+						<Output>Streams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_08</Default>
+					</Connections>
+				</Node>
+				<Node Name="Isolate Subtitle Streams" ID="Process_08" TypeID="FilterCollectionNode">
+					<Inputs>
+						<Collection>{Streams}</Collection>
+						<SubValue>SubtitleType</SubValue>
+						<Filter>Image</Filter>
+					</Inputs>
+					<Outputs>
+						<Output>GraphicSubtitleStreams</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_09</Default>
+					</Connections>
+				</Node>
+
+				<!-- If there are no graphical subtitle streams in the file, then we can just hand off the transcoded file -->
+				<Node Name="Count Image Streams" ID="Process_09" TypeID="CountCollectionNode">
+					<Inputs>
+						<Collection>{GraphicSubtitleStreams}</Collection>
+					</Inputs>
+					<Outputs>
+						<Output>GraphicalSubtitleCount</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_10</Default>
+					</Connections>
+				</Node>
+				<Node Name="Check Subtitles Need Processing" ID="Process_10" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{GraphicalSubtitleCount}</LeftValue>
+						<RightValue>0</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We don't need to do anything with the file, we can just finish up processing it -->
+						<True>Process_23</True>
+
+						<!-- We will need to process all of the subtitles that are contained within the file to strip out subtitles -->
+						<False>Process_11</False>
+					</Connections>
+				</Node>
+
+				<!-- We can extract the subtitles from the file and try to convert the subtitles into a standard text format -->
+				<Node Name="Extract Subtitles" ID="Process_11" TypeID="ExtractSubtitlesNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{TranscodeFile}</Source>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<StorageDir>{WorkingDir}\{RelativeDir}\Subtitles</StorageDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_12</Default>
+					</Connections>
+				</Node>
+				<Node Name="Convert Graphic Subtitles to Text" ID="Process_12" TypeID="ConvertGraphicSubsToTextNode">
+					<Inputs>
+						<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+					</Inputs>
+					<Connections>
+						<Default>Process_13</Default>
+					</Connections>
+				</Node>
+				<Node Name="Check Conversion Success" ID="Process_13" TypeID="EstimateSRTConversionSuccessNode">
+					<Inputs>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<SourceDir>{WorkingDir}\{RelativeDir}\Subtitles</SourceDir>
+						<DictionaryFile>{Dictionary}</DictionaryFile>
+					</Inputs>
+					<Outputs>
+						<Summary>ConversionSummary</Summary>
+					</Outputs>
+					<Connections>
+						<Default>Process_14</Default>
+					</Connections>
+				</Node>
+				<Node Name="Output Conversion Summary" ID="Process_14" TypeID="JSONSerialiseToDiskNode">
+					<Inputs>
+						<Value>{ConversionSummary}</Value>
+						<OutputPath>{WorkingDir}\{RelativeDir}\Subtitles\Conversion.json</OutputPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_15</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can remove the graphical subtitle streams from the file, they aren't needed anymore -->
+				<Node Name="Isolate Video File Name" ID="Process_15" TypeID="GetFileNameNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>FileName</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_16</Default>
+					</Connections>
+				</Node>
+				<Node Name="Remove Graphical Subtitle Streams" ID="Process_16" TypeID="RemoveStreamsNode">
+					<Inputs>
+						<FFmpeg>{FFmpeg}</FFmpeg>
+						<Source>{TranscodeFile}</Source>
+						<Streams>{GraphicSubtitleStreams}</Streams>
+						<TargetInfo>{FileMetaData}</TargetInfo>
+						<OutputPath>{WorkingDir}\{RelativeDir}\Remux\{FileName}</OutputPath>
+					</Inputs>
+					<Outputs>
+						<Output>RemuxFile</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_17</Default>
+					</Connections>
+				</Node>
+
+				<!-- Now we have the output subtitles and stripped down files, we need to move them into the final locations -->
+				<Node Name="Get Relative Parent Directory" ID="Process_17" TypeID="GetDirectoryNameNode">
+					<Inputs>
+						<FilePath>{RelativeDir}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeParentDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_18</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if the final outputs should be uploaded to the SSH server or just stored locally -->
+				<Node Name="Check if Uploading Files" ID="Process_18" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{ResultHandler}</LeftValue>
+						<RightValue>Upload</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We need to upload the files to the SSH server for storage and use -->
+						<True>Process_19</True>
+
+						<!-- The files can just be placed in the local output directory for later manual use -->
+						<False>Process_21</False>
+					</Connections>
+				</Node>
+
+				<!-- We can upload all of the resulting files from the process to the server for storage and use -->
+				<Node Name="Archive Subtitle Directory" ID="Process_19" TypeID="UploadSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetDir>{WorkingDir}\{RelativeDir}\Subtitles</TargetDir>
+						<DestinationPath>{ServerSubtitleDir}/{RelativeParentDir}</DestinationPath>
+						<RenameDirectory>{FileName}</RenameDirectory>
+					</Inputs>
+					<Connections>
+						<Default>Process_20</Default>
+					</Connections>
+				</Node>
+				<Node Name="Upload Remuxed File" ID="Process_20" TypeID="UploadSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{RemuxFile}</TargetFile>
+						<DestinationPath>{ServerOutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- We can just move the resulting files to the process to the local storage location -->
+				<Node Name="Copy Subtitle Directory" ID="Process_21" TypeID="CopyDirectoryNode">
+					<Inputs>
+						<TargetDir>{WorkingDir}\{RelativeDir}\Subtitles</TargetDir>
+						<DestinationPath>{LocalSubtitleDir}/{RelativeParentDir}</DestinationPath>
+						<RenameDirectory>{FileName}</RenameDirectory>
+					</Inputs>
+					<Connections>
+						<Default>Process_22</Default>
+					</Connections>
+				</Node>
+				<Node Name="Copy Remux File" ID="Process_22" TypeID="CopyFileNode">
+					<Inputs>
+						<TargetFile>{RemuxFile}</TargetFile>
+						<DestinationPath>{LocalOutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if the final outputs should be uploaded to the SSH server or just stored locally -->
+				<Node Name="Check if Uploading Files" ID="Process_23" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{ResultHandler}</LeftValue>
+						<RightValue>Upload</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- We need to upload the transcode file to the SSH server for storage and use -->
+						<True>Process_24</True>
+
+						<!-- The transcoded file can just be placed in the local output directory for later manual use -->
+						<False>Process_25</False>
+					</Connections>
+				</Node>
+
+				<!-- Handle the final processing and placement of the transcoded file that does't have any graphical subtitles -->
+				<Node Name="Upload Transcoded File" ID="Process_24" TypeID="UploadSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{TranscodeFile}</TargetFile>
+						<DestinationPath>{ServerOutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+				<Node Name="Copy Transcoded File" ID="Process_25" TypeID="CopyFileNode">
+					<Inputs>
+						<TargetFile>{TranscodeFile}</TargetFile>
+						<DestinationPath>{LocalOutputDir}/{RelativeDir}</DestinationPath>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- We have finished with the file, we can mark it off as done so we don't process it again -->
+				<Node Name="Mark Off File in Manifest" ID="Process_End_00" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{IntermediateDir}\TranscodeRawMediaWithUpload_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+						<Value>Complete</Value>
+					</Inputs>
+				</Node>
+			</ProcessGraph>
+		</MainGraph>
+
+		<!-- When the graph has finished processing, we can clean up the working directory that is no longer needed -->
+		<PostProcessGraph>
+			<Node Name="Was Processing Successful?" ID="PostProcess_00" TypeID="ComparisonNode">
+				<Inputs>
+					<LeftValue>{ProcessedSuccessfully}</LeftValue>
+					<RightValue>True</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- If we were, we can clean up the working directory. Don't need it anymore -->
+					<True>PostProcess_01</True>
+
+					<!-- If we weren't successful, then we can exit now and leave the working directory for troubleshooting -->
+					<False></False>
+				</Connections>
+			</Node>
+			<Node Name="Clean up Working Directory" ID="PostProcess_01" TypeID="DeleteDirectoryNode">
+				<Inputs>
+					<TargetDir>{WorkingDir}</TargetDir>
+				</Inputs>
+			</Node>
+		</PostProcessGraph>
+	</Workflow>
+</Pipeline>

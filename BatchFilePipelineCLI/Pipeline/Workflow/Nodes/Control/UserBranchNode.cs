@@ -10,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// <summary>
     /// Allow for a user to select a value for branching path logic
     /// </summary>
-    [PipelineNode(nameof(UserBranchNode), NodeUsage.All)]
+    [PipelineNode(nameof(UserBranchNode), ~NodeUsage.Process)]
     internal sealed class UserBranchNode : IPipelineNode
     {
         /*----------Variables----------*/
