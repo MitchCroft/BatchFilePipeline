@@ -492,6 +492,14 @@
 						<Key>State</Key>
 						<Value>Complete</Value>
 					</Inputs>
+					<Connections>
+						<Default>Process_End_01</Default>
+					</Connections>
+				</Node>
+				<Node Name="Delete Working Directory" ID="Process_End_01" TypeID="DeleteDirectoryNode">
+					<Inputs>
+						<TargetDir>{WorkingDir}\{RelativeDir}</TargetDir>
+					</Inputs>
 				</Node>
 			</ProcessGraph>
 		</MainGraph>
