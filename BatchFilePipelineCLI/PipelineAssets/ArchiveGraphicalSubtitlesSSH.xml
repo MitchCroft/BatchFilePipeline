@@ -427,7 +427,7 @@
 		<PostProcessGraph>
 			<Node Name="Was Processing Successful?" ID="PostProcess_00" TypeID="ComparisonNode">
 				<Inputs>
-					<LeftValue>{ProcessedSuccessfully}</LeftValue>
+					<LeftValue>{RunSummary.WasSuccessful}</LeftValue>
 					<RightValue>True</RightValue>
 				</Inputs>
 				<Connections>

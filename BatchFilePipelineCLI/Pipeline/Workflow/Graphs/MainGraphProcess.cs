@@ -27,6 +27,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// </summary>
         private const string CURRENT_IDENTIFIER_PROPERTY = "CurrentIdentifier";
 
+        /// <summary>
+        /// The label that will be assigned to the property used to display the run summary of the operation
+        /// </summary>
+        private const string RUN_SUMMARY_PROPERTY = "RunSummary";
+
         //PRIVATE
 
         /// <summary>
@@ -146,6 +151,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 
             // We will manage this process as a separate, cancellable task that won't effect the flow of everything else
             bool wasCancelled = false;
+            ExecutionResult errorResult = default;
+            DateTime startTime = DateTime.Now;
             using (var token = CancellationStack.PushSource(cancellationToken))
             {
                 do
@@ -207,6 +214,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                     {
                                         return processOutput;
                                     }
+                                    errorResult = processOutput;
                                     continue;
                                 }
 
@@ -243,8 +251,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 wasCancelled = token.IsCancellationRequested;
             }
 
-            // Update the results with completion state of the process
-            outputResults["ProcessedSuccessfully"] = completedFailure.Count == 0 && wasCancelled == false;
+            // Generate the summary object that will be exported
+            outputResults[RUN_SUMMARY_PROPERTY] = new MainProcessSummary
+            (
+                wasCancelled == true ? -1 : completedFailure.Count == 0 ? 0 : errorResult.ResultCode,
+                wasCancelled == true ? "Cancelled" : completedFailure.Count == 0 ? "Success" : errorResult.DetailMessage,
+                DateTime.Now - startTime,
+                completedSuccessfully.ToArray(),
+                completedFailure.ToArray()
+            );
 
             int total = completedSuccessfully.Count + completedFailure.Count;
             if (total > 0)

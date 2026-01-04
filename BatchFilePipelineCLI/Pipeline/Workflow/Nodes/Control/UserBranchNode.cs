@@ -219,7 +219,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
                 Console.WriteLine($"Available Options ({displayOptions.Count}):\n\t{string.Join("\n\t", displayLabels.Select((o, i) => $"{i}.\t{o}"))}");
 
                 // We want selection input from the user
-                Console.Write(prompt);
+                Console.Write($"{prompt} ");
                 var input = await ReadLineAsync(cancellationToken);
                 if (cancellationToken.IsCancellationRequested == true)
                 {
