@@ -146,31 +146,27 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Email
 
             // Create the client that will send the message
             using var client = new SmtpClient();
-            try
+
+            // Create the connection to the client for processing
+            await client.ConnectAsync(host, port, socketOption, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
             {
-                // Create the connection to the client for processing
-                await client.ConnectAsync(host, port, socketOption, cancellationToken);
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return default;
-                }
-
-                // Authenticate the connection so that we can send the message
-                await client.AuthenticateAsync(username, password, cancellationToken);
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return default;
-                }
-
-                // Send the message to the receiver
-                await client.SendAsync(message, cancellationToken);
+                return default;
             }
 
-            //Make sure the client is disconnected when done
-            finally
+            // Authenticate the connection so that we can send the message
+            await client.AuthenticateAsync(username, password, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
             {
-                await client.DisconnectAsync(true, cancellationToken);
+                return default;
             }
+
+            // Send the message to the receiver
+            await client.SendAsync(message, cancellationToken);
+
+            // Make sure the client is disconnected when done
+            await client.DisconnectAsync(true, cancellationToken);
+
             return default;
         }
     }
