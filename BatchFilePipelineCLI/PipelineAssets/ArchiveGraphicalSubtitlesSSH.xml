@@ -60,10 +60,28 @@
 				</Connections>
 			</Node>
 
+			<!-- Which library of files are we wanting to explore for processing -->
+			<Node Name="Select Library Type" ID="PreProcess_02" TypeID="UserBranchNode">
+				<Inputs>
+					<Prompt>Which library do you wish to process?</Prompt>
+					<OptionsText>Movies|Shows</OptionsText>
+					<DefaultSelection>0</DefaultSelection>
+				</Inputs>
+				<Outputs>
+					<SelectedValue>SelectedLibrary</SelectedValue>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_03</Default>
+				</Connections>
+			</Node>
+
 			<!-- We want to export that final directory to the rest of the graph for use -->
-			<Node Name="Export Working Directory" ID="PreProcess_02" TypeID="ExportValuesNode">
+			<Node Name="Export Working Directory" ID="PreProcess_03" TypeID="ExportValuesNode">
 				<Inputs>
 					<WorkingDir>{WorkingDir}</WorkingDir>
+					<InputDir>{InputDir}/{SelectedLibrary}</InputDir>
+					<OutputDir>{OutputDir}/{SelectedLibrary}</OutputDir>
+					<ArchiveDir>{ArchiveDir}/{SelectedLibrary}</ArchiveDir>
 				</Inputs>
 			</Node>
 		</PreProcessGraph>
@@ -425,20 +443,39 @@
 
 		<!-- When the graph has finished processing, we can clean up the working directory that is no longer needed -->
 		<PostProcessGraph>
-			<Node Name="Was Processing Successful?" ID="PostProcess_00" TypeID="ComparisonNode">
+			<!-- Send the status result email to the registered receiver -->
+			<Node Name="Send Result Summary" ID="PostProcess_00" TypeID="SendEmailNode">
+				<Inputs>
+					<From>{SMTP_SENDER}</From>
+					<FromName>{SMTP_SENDER_NAME}</FromName>
+					<To>{NotifReceiver}</To>
+					<Subject>[{RunSummary.ResultCode}] Archive Graphical Subtitles</Subject>
+					<Body>{RunSummary.Report}</Body>
+					<Host>{SMTP_OUTGOING_SERVER}</Host>
+					<Port>{SMTP_OUTGOING_PORT}</Port>
+					<Username>{SMTP_OUTGOING_USERNAME}</Username>
+					<Password>{SMTP_OUTGOING_PASSWORD}</Password>
+				</Inputs>
+				<Connections>
+					<Default>PostProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Clear up the working directory if we finished successfully -->
+			<Node Name="Was Processing Successful?" ID="PostProcess_01" TypeID="ComparisonNode">
 				<Inputs>
 					<LeftValue>{RunSummary.WasSuccessful}</LeftValue>
 					<RightValue>True</RightValue>
 				</Inputs>
 				<Connections>
 					<!-- If we were, we can clean up the working directory. Don't need it anymore -->
-					<True>PostProcess_01</True>
+					<True>PostProcess_02</True>
 
 					<!-- If we weren't successful, then we can exit now and leave the working directory for troubleshooting -->
 					<False></False>
 				</Connections>
 			</Node>
-			<Node Name="Clean up Working Directory" ID="PostProcess_01" TypeID="DeleteDirectoryNode">
+			<Node Name="Clean up Working Directory" ID="PostProcess_02" TypeID="DeleteDirectoryNode">
 				<Inputs>
 					<TargetDir>{WorkingDir}</TargetDir>
 				</Inputs>
