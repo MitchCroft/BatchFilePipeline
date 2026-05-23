@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.Extensions;
@@ -188,7 +189,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
                     { _selectedValueProperty.Name, displayOptions[selectedIndex] },
                     { _didTimeoutProperty.Name, didTimeout }
                 },
-                nextNode: selectedIndex.ToString()
+                nextNode: displayOptions[selectedIndex].ToString()
             );
         }
 
@@ -220,7 +221,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
 
                 // We want selection input from the user
                 Console.Write($"{prompt} ");
-                var input = await ReadLineAsync(cancellationToken);
+                var input = await ConsoleUtility.ReadLineAsync(cancellationToken);
                 if (cancellationToken.IsCancellationRequested == true)
                 {
                     break;
@@ -258,38 +259,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
                 Console.ForegroundColor = ConsoleColor.White;
             }
             return -1;
-        }
-
-        /// <summary>
-        /// Allow for the asynchronous entering of text for processing
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token that controls how long the operation lasts</param>
-        /// <returns>Returns the entered line or null if cancelled</returns>
-        private static async ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken)
-        {
-            StringBuilder buffer = new();
-            while (cancellationToken.IsCancellationRequested == false)
-            {
-                // Check if the user has input waiting
-                if (Console.KeyAvailable == false)
-                {
-                    await Task.Delay(50);
-                    continue;
-                }
-
-                // Check the key that was pressed
-                var key = Console.ReadKey(intercept: false);
-                if (key.Key == ConsoleKey.Enter)
-                {
-                    return buffer.ToString();
-                }
-
-                // Return the current display
-                buffer.Append(key.KeyChar);
-            }
-
-            // Cancelled, nothing to report
-            return null;
         }
     }
 }

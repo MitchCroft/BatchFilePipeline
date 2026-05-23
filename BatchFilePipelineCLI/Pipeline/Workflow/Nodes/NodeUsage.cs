@@ -36,6 +36,11 @@
         All = PreProcess | Identification | Process | PostProcess,
 
         /// <summary>
+        /// Node is able to be used in the main stage of the pipeline workflow
+        /// </summary>
+        MainGraph = Identification | Process,
+
+        /// <summary>
         /// Node is able to be used in the support stages of the pipeline workflow
         /// </summary>
         Support = PreProcess | PostProcess

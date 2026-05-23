@@ -5,7 +5,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// <summary>
     /// Raise an intentional failure in the process for the given entry
     /// </summary>
-    [PipelineNode(nameof(FailNode), NodeUsage.Process)]
+    [PipelineNode(nameof(FailNode), NodeUsage.All)]
     internal sealed class FailNode : IPipelineNode
     {
         /*----------Variables----------*/

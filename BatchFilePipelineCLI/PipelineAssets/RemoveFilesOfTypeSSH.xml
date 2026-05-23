@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Remove Files Of Type SSH
+
+	This pipeline will read the contents of an external server via SSH and
+	remove all files of specific file extensions.
+
+	Required inputs:
+	- InputDir = The directory on the remote server where the input files should be processed from
+-->
+
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Remove Files Of Type SSH">
+	<!-- Define the basic environment variables that are needed for processing the directory -->
+	<Environment>
+		<DefaultTypeFilter>*.srt</DefaultTypeFilter>
+	</Environment>
+
+	<Workflow>
+		<!-- We need to identify what type of files we are going to be targeting and where to start looking from -->
+		<PreProcessGraph>
+			<!-- Find the types of files that are to be detected in the operation -->
+			<Node Name="Select File Types" ID="PreProcess_00" TypeID="UserInputNode">
+				<Inputs>
+					<Prompt>Enter filter pattern for files to remove:</Prompt>
+					<Default>{DefaultTypeFilter}</Default>
+				</Inputs>
+				<Outputs>
+					<Output>TypeFilter</Output>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Find the location on the remote server that will be searched -->
+			<Node Name="Select Search Directory" ID="PreProcess_01" TypeID="UserBranchNode">
+				<Inputs>
+					<Prompt>Which library do you wish to process?</Prompt>
+					<OptionsText>Movies|Shows</OptionsText>
+					<DefaultSelection>0</DefaultSelection>
+				</Inputs>
+				<Outputs>
+					<SelectedValue>SelectedLibrary</SelectedValue>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- Check that the information entered is what we want to use in the processing graph -->
+			<Node Name="Confirmation" ID="PreProcess_02" TypeID="UserBranchNode">
+				<Inputs>
+					<Prompt>Are the given properties valid? Search Filter = "{TypeFilter}" Search Directory = "{InputDir}/{SelectedLibrary}"</Prompt>
+					<OptionsText>Cancel|Continue</OptionsText>
+				</Inputs>
+				<Connections>
+					<Cancel>PreProcess_03</Cancel>
+					<Continue>PreProcess_04</Continue>
+				</Connections>
+			</Node>
+
+			<!-- If the user wanted to cancel, kill the pipeline -->
+			<Node Name="Prevent Continue" ID="PreProcess_03" TypeID="FailNode">
+				<Inputs>
+					<Code>0</Code>
+					<Message>Cancelled operation, not performing any delete operations</Message>
+				</Inputs>
+			</Node>
+
+			<!-- We can export the values that need to be processed to the next stage -->
+			<Node Name="Export Target Values" ID="PreProcess_04" TypeID="ExportValuesNode">
+				<Inputs>
+					<TypeFilter>{TypeFilter}</TypeFilter>
+					<SearchDir>{InputDir}/{SelectedLibrary}</SearchDir>
+				</Inputs>
+			</Node>
+		</PreProcessGraph>
+
+		<!-- For the main graph, we need to identify all files that match the type in the search directory and process them -->
+		<MainGraph>
+			<!-- Find all of the files in the search location -->
+			<IdentificationGraph>
+				<Node Name="Find Target Files" ID="Identification_00" TypeID="FindFilesInSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<SearchDirectory>{SearchDir}</SearchDirectory>
+						<SearchPattern>{TypeFilter}</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>Files</Output>
+					</Outputs>
+					<Connections>
+						<Default>Identification_01</Default>
+					</Connections>				
+				</Node>
+	
+				<!-- Export the collection of files that were identified for removal at runtime -->
+				<Node Name="Export Found Files" ID="Identification_01" TypeID="ExportValuesNode">
+					<Inputs>
+						<Identifiers>{Files}</Identifiers>
+					</Inputs>
+				</Node>
+			</IdentificationGraph>
+
+			<!-- Process all of the files that were found in the identification stage -->
+			<ProcessGraph>
+				<Node Name="Delete Remote File" ID="Process_00" TypeID="DeleteSSHFileNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<TargetFile>{CurrentIdentifier}</TargetFile>
+					</Inputs>
+				</Node>
+			</ProcessGraph>
+		</MainGraph>
+	</Workflow>
+</Pipeline>
