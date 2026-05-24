@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
@@ -97,20 +98,20 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the information that will be used for processing
-            string executable = (string)inputs[_executableProperty.Name]!;
-            string sourcePath = (string)inputs[_sourcePathProperty.Name]!;
-            VideoDetails targetInfo = (VideoDetails)inputs[_fileInfoProperty.Name]!;
-            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-            string externalSubtitleDir = (string)inputs[_externalSubtitleDirProperty.Name]!;
-            string subtitleFilesExtension = (string)inputs[_subtitleFilesExtensionProperty.Name]!;
-            string outputPath = (string)inputs[_outputPathProperty.Name]!;
+            string executable = context.GetInput<string>(_executableProperty);
+            string sourcePath = context.GetInput<string>(_sourcePathProperty);
+            VideoDetails targetInfo = context.GetInput<VideoDetails>(_fileInfoProperty);
+            IEnumerable streams = context.GetInput<IEnumerable>(_streamsProperty);
+            string externalSubtitleDir = context.GetInput<string>(_externalSubtitleDirProperty);
+            string subtitleFilesExtension = context.GetInput<string>(_subtitleFilesExtensionProperty);
+            string outputPath = context.GetInput<string>(_outputPathProperty);
 
             // We need to identify the collection of files that will be included in this remuxing
             List<string> filesToCombine = new List<string> { sourcePath };

@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -62,15 +63,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Get the properties that will be run
-            string executable = (string)inputs["FFprobe"]!;
-            string target = (string)inputs["Target"]!;
+            string executable = context.GetInput<string>(_executableProperty);
+            string target = context.GetInput<string>(_targetProperty);
 
             // We want to run the process to find the meta data for the target file
             var result = await ExternalProcess.RunAsync

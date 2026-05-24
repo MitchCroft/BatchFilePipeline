@@ -9,6 +9,11 @@
         //PRIVATE
 
         /// <summary>
+        /// Use an instance of a generic object as a thread lock for controlling access to standard output
+        /// </summary>
+        private readonly object _lock = new object();
+
+        /// <summary>
         /// The file location where the log information should be placed for processing
         /// </summary>
         private readonly string _outputFile;
@@ -27,6 +32,12 @@
         /// </summary>
         /// <param name="message">The message that is to be output to the log</param>
         /// <param name="type">The type of log that this is</param>
-        public void LogMessage(object message, LogType type) => File.AppendAllText(_outputFile, $"{DateTime.Now} [{type}] {message}\n");
+        public void LogMessage(object message, LogType type)
+        {
+            lock (_lock)
+            {
+                File.AppendAllText(_outputFile, $"{DateTime.Now} [{type}] {message}\n");
+            }
+        }
     }
 }

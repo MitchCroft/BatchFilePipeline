@@ -8,39 +8,45 @@ using Renci.SshNet;
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
 {
     /// <summary>
-    /// Upload a file to a remote SSH server from a local path
+    /// Defines a node that can be used to copy a file from one remote location to another
     /// </summary>
-    [PipelineNode(nameof(UploadSSHFileNode), NodeUsage.Process)]
-    internal sealed class UploadSSHFileNode : SSHBaseNode, IPipelineNode
+    [PipelineNode(nameof(CopyFileSSHNode), NodeUsage.Process)]
+    internal sealed class CopyFileSSHNode : SSHBaseNode, IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// We only need a few pieces of information to be able to upload a file to the remote server
+        /// We will need to know from where and to where the file should be copied
         /// </summary>
-        private readonly Property _targetFileProperty = Property.Create
+        private readonly Property _sourcePathProperty = Property.Create
         (
-            "TargetFile",
-            "The path to the file on the local system that is to be uploaded to the remote SSH server",
+            "Source",
+            "The path to the remote file that is to be copied",
             typeof(string),
-            "Path/To/Local/File.txt"
+            "/path/to/source/file.txt"
         );
         private readonly Property _destinationPathProperty = Property.Create
         (
-            "DestinationPath",
-            "The path on the remote SSH server where the file should be uploaded to",
+            "Destination",
+            "The path to the final location of the remote file that is to be processed",
             typeof(string),
-            "/remote/path/to/file.txt"
+            "/path/to/destination/file.txt"
         );
-
+        private readonly Property _allowOverwriteProperty = Property.Create
+        (
+            "AllowOverwrite",
+            "Flags if an existing file at the destination path should be overwritten",
+            false
+        );
+        
         /// <summary>
-        /// We can serve up the file again after it has been uploaded
+        /// Define the properties that will be passed out by this Node once finished processing
         /// </summary>
         private readonly Property _outputProperty = Property.Create
         (
             "Output",
-            "Passes out the path for the remote file that was uploaded",
+            "Passes out the destination path of the copied file",
             typeof(string)
         );
 
@@ -51,7 +57,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => CombineInputs(_targetFileProperty, _destinationPathProperty);
+        public IList<Property> GetInputProperties() => CombineInputs(_sourcePathProperty, _destinationPathProperty, _allowOverwriteProperty);
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
@@ -70,8 +76,9 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         {
             // Retrieve the properties that will be processed
             ConnectionInfo connectionInfo = GetConnectionInfo(context);
-            string targetFile = context.GetInput<string>(_targetFileProperty);
-            string destinationPath = (context.GetInput<string>(_destinationPathProperty)).Replace('\\', '/');
+            string sourcePath = context.GetInput<string>(_sourcePathProperty);
+            string destinationPath = context.GetInput<string>(_destinationPathProperty);
+            bool allowOverwrite = context.GetInput<bool>(_allowOverwriteProperty);
 
             // Try to make the SSH connection
             using var sftp = new SftpClient(connectionInfo);
@@ -80,26 +87,19 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             // We need to ensure that the system doesn't sleep during file transfers
             using var marker = ExecutionStateHandler.Push();
 
-            // Ensure that the target directory exists
+            // Ensure that the destination directory exists
             await sftp.CreateRemoteDirectoryAsync(Path.GetDirectoryName(destinationPath)!, cancellationToken);
+
+            // Copy the data from the source file to the destination
+            Logger.Log($"[{nameof(CopyFileSSHNode)}] Copying remote file '{sourcePath}' to '{destinationPath}'");
+            await sftp.CopyRemoteFileAsync(sourcePath, destinationPath, cancellationToken, allowOverwrite);
             if (cancellationToken.IsCancellationRequested == true)
             {
                 return new ExecutionResult();
             }
+            Logger.Success($"[{nameof(CopyFileSSHNode)}] Successfully copied remote file '{sourcePath}' to '{destinationPath}'");
 
-            // Open the local file so that it can be read and uploaded
-            using (var fStream = File.OpenRead(targetFile))
-            {
-                Logger.Log($"[{nameof(UploadSSHFileNode)}] Uploading file '{targetFile}' to remote '{destinationPath}'");
-                await sftp.UploadFileAsync(fStream, destinationPath, cancellationToken);
-            }
-            if (cancellationToken.IsCancellationRequested == true)
-            {
-                return new ExecutionResult();
-            }
-            Logger.Success($"[{nameof(UploadSSHFileNode)}] Uploaded file '{targetFile}' to remote '{destinationPath}'");
-
-            // We have the results of the file upload
+            // We have the results of the file copy operation
             return new ExecutionResult
             (
                 new Dictionary<string, object?>

@@ -50,5 +50,33 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility
                 Logger.Log($"[{nameof(SSHFileIOUtility)}] Created remote directory '{current}'");
             }
         }
+
+        /// <summary>
+        /// Asynchronously copies a file from a remote SFTP server to a local destination
+        /// </summary>
+        /// <param name="sftp">The SftpClient instance used to connect to the remote server</param>
+        /// <param name="source">The path of the source file on the remote server</param>
+        /// <param name="destination">The destination path where the file will be copied</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
+        public static async ValueTask CopyRemoteFileAsync(this SftpClient sftp,
+                                                          string source,
+                                                          string destination,
+                                                          CancellationToken cancellationToken,
+                                                          bool allowOverwrite = false)
+        {
+            // Read all of the source information to destination
+            using var reader = sftp.OpenRead(source.Replace('\\', '/'));
+            using var writer = sftp.Open(destination.Replace('\\', '/'), allowOverwrite ? FileMode.Create : FileMode.CreateNew);
+
+            // Copy the data to the destination
+            int data;
+            while ((data = reader.ReadByte()) != -1)
+            {
+                writer.WriteByte((byte)data);
+            }
+
+            // Flush the data to the location
+            await writer.FlushAsync();
+        }
     }
 }

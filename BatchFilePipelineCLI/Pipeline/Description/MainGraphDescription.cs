@@ -27,5 +27,12 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// </summary>
         [XmlElement("ProcessGraph")]
         public GraphDescription ProcessGraph { get; set; } = new GraphDescription();
+
+        /// <summary>
+        /// The collection of sub-process graphs that can be used as additional processing chunks within the graph
+        /// </summary>
+        [XmlArray("SubProcessGraphs")]
+        [XmlArrayItem(typeof(GraphDescription))]
+        public GraphDescription[] SubProcessGraphs { get; set; } = Array.Empty<GraphDescription>();
     }
 }

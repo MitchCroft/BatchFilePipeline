@@ -53,16 +53,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// <summary>
         /// Retrieve the formatted connection info that can be used to connect to the SSH server
         /// </summary>
-        /// <param name="inputs">The collection of input information that will be used to resolve the required elements</param>
+        /// <param name="context">The context for the Node that is currently running</param>
         /// <returns>Returns the connection info object that can be used to process a remote connection</returns>
-        protected ConnectionInfo GetConnectionInfo(IReadOnlyDictionary<string, object?> inputs)
+        protected ConnectionInfo GetConnectionInfo(PipelineExecutionContext context)
         {
             // Get the different pieces of information that will be used for processing the connection
-            string host = (string)inputs[_hostProperty.Name]!;
-            string username = (string)inputs[_usernameProperty.Name]!;
-            string password = (string)inputs[_passwordProperty.Name]!;
-            string privateKeyPath = (string)inputs[_privateKeyProperty.Name]!;
-            string privateKeyPassphrase = (string)inputs[_privateKeyPassphraseProperty.Name]!;
+            string host = context.GetInput<string>(_hostProperty);
+            string username = context.GetInput<string>(_usernameProperty);
+            string password = context.GetInput<string>(_passwordProperty);
+            string privateKeyPath = context.GetInput<string>(_privateKeyProperty);
+            string privateKeyPassphrase = context.GetInput<string>(_privateKeyPassphraseProperty);
 
             // Determine the authentication methods that will be used for connecting to the server
             List<AuthenticationMethod> authenticationMethods = new(2);

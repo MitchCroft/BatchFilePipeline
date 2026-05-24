@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.Data;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility;
@@ -101,19 +102,19 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Get the input values that will be used to process the transcode operation
-            string executable = (string)inputs[_executableProperty.Name]!;
-            string videoPath = (string)inputs[_videoPathProperty.Name]!;
-            HandbrakePresetOption preset = (HandbrakePresetOption)inputs[_presetProperty.Name]!;
-            string outputDir = (string)inputs[_outputDirProperty.Name]!;
-            bool allowHardwareAcceleration = (bool)inputs[_allowHardwareAccelerationProperty.Name]!;
-            string additionalProcessArgs = (string)inputs[_additionalProcessArgsProperty.Name]!;
+            string executable = context.GetInput<string>(_executableProperty);
+            string videoPath = context.GetInput<string>(_videoPathProperty);
+            HandbrakePresetOption preset = context.GetInput<HandbrakePresetOption>(_presetProperty);
+            string outputDir = context.GetInput<string>(_outputDirProperty);
+            bool allowHardwareAcceleration = context.GetInput<bool>(_allowHardwareAccelerationProperty);
+            string additionalProcessArgs = context.GetInput<string>(_additionalProcessArgsProperty);
 
             // Find the extension that will be used for the output file
             string extension = preset.FileFormat switch

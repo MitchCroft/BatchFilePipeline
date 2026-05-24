@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
 {
@@ -63,17 +64,17 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public override ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public override ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                           CancellationToken cancellationToken)
         {
             // Get the values that will be needed
-            string manifestPath = (string)inputs[_manifestPathProperty.Name]!;
-            string identifier = (string)inputs[_identifierProperty.Name]!;
-            string key = (string)inputs[_keyProperty.Name]!;
-            string defaultValue = (string)inputs[_defaultValueProperty.Name]!;
+            string manifestPath = context.GetInput<string>(_manifestPathProperty);
+            string identifier = context.GetInput<string>(_identifierProperty);
+            string key = context.GetInput<string>(_keyProperty);
+            string defaultValue = context.GetInput<string>(_defaultValueProperty);
 
             // Read the manifest data
             var manifest = ReadManifestData(manifestPath);

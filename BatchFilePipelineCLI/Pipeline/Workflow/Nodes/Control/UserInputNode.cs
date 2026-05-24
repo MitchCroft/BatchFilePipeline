@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control.Utility;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.Extensions;
@@ -71,16 +72,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Get the pieces of information that are required for processing
-            string prompt = (string)inputs[_promptProperty.Name]!;
-            string defaultValue = (string)inputs[_defaultValueProperty.Name]!;
-            int timeoutPeriod = (int)inputs[_timeoutPeriodProperty.Name]!;
+            string prompt = context.GetInput<string>(_promptProperty);
+            string defaultValue = context.GetInput<string>(_defaultValueProperty);
+            int timeoutPeriod = context.GetInput<int>(_timeoutPeriodProperty);
 
             // We need to try and get the value from the user
             using var inputCancellationToken = CancellationStack.PushSource(cancellationToken);

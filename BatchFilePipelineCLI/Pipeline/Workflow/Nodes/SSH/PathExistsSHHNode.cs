@@ -1,29 +1,38 @@
-﻿using BatchFilePipelineCLI.Logging;
-using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
-using BatchFilePipelineCLI.Utility.ExecutionState;
 using Renci.SshNet;
+using System.Globalization;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
 {
     /// <summary>
-    /// Delete a file from a remote SSH server
+    /// Define a Node that can be used to check if a path exists at a remote location
     /// </summary>
-    [PipelineNode(nameof(DeleteSSHFileNode), NodeUsage.Process)]
-    internal sealed class DeleteSSHFileNode : SSHBaseNode, IPipelineNode
+    [PipelineNode(nameof(PathExistsSHHNode), NodeUsage.All)]
+    internal sealed class PathExistsSHHNode : SSHBaseNode, IPipelineNode
     {
         /*----------Variables----------*/
         //PRIVATE
 
         /// <summary>
-        /// We only need a few pieces of information to be able to download a file from the remote server
+        /// We will need to get some different pieces of information to know what to check
         /// </summary>
-        private readonly Property _targetFileProperty = Property.Create
+        private readonly Property _pathProperty = Property.Create
         (
-            "TargetFile",
-            "The path to the file on the remote SSH server that should be downloaded",
+            "Path",
+            "The path that should be checked for existence on the remote SSH server",
             typeof(string),
-            "/remote/path/to/file.txt"
+            "Parent/Directory/"
+        );
+
+        /// <summary>
+        /// This node can just pass out a simple boolean value indicating whether or not the directory exists at the specified path on the remote SSH server
+        /// </summary>
+        private readonly Property _outputProperty = Property.Create
+        (
+            "Output",
+            "The resulting boolean value indicating whether or not the path exists at the specified path on the remote SSH server",
+            typeof(bool)
         );
 
         /*----------Functions----------*/
@@ -33,13 +42,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => CombineInputs(_targetFileProperty);
+        public IList<Property> GetInputProperties() => CombineInputs(_pathProperty);
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
         /// </summary>
         /// <returns>Returns the collection of output properties that can be used in later stages for processing</returns>
-        public IList<Property> GetOutputProperties() => Array.Empty<Property>();
+        public IList<Property> GetOutputProperties() => [_outputProperty];
 
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
@@ -52,23 +61,27 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         {
             // Retrieve the properties that will be processed
             ConnectionInfo connectionInfo = GetConnectionInfo(context);
-            string targetFile = context.GetInput<string>(_targetFileProperty);
+            string path = context.GetInput<string>(_pathProperty);
 
             // Try to make the SSH connection
             using var sftp = new SftpClient(connectionInfo);
             sftp.Connect();
 
-            // We need to ensure that the system doesn't sleep during file transfers
-            using var marker = ExecutionStateHandler.Push();
+            // Check to see if the path exists on the remote server
+            bool exists = await sftp.ExistsAsync(path.Replace('\\', '/'), cancellationToken);
+            if (cancellationToken.IsCancellationRequested == true)
+            {
+                return new ExecutionResult();
+            }
 
-            // Remove the file from the remote server
-            Logger.Log($"[{nameof(DeleteSSHFileNode)}] Deleting the file '{targetFile}'...");
-            await sftp.DeleteFileAsync(targetFile, cancellationToken);
-
-            // We have finished processing the file
+            // We have the results of the check operation
             return new ExecutionResult
             (
-                new Dictionary<string, object?>()
+                new Dictionary<string, object?>
+                {
+                    { _outputProperty.Name, exists }
+                },
+                nextNode: exists.ToString(CultureInfo.InvariantCulture)
             );
         }
     }

@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.PropertyResolver;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
@@ -115,25 +116,25 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Email
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the values that are needed for proecssing
-            string from = (string)inputs[_fromProperty.Name]!;
-            string fromName = (string)inputs[_fromNameProperty.Name]!;
-            string to = (string)inputs[_toProperty.Name]!;
-            string toName = (string)inputs[_toNameProperty.Name]!;
-            string subject = (string)inputs[_subjectProperty.Name]!;
-            string body = (string)inputs[_bodyProperty.Name]!;
-            string host = (string)inputs[_hostProperty.Name]!;
-            int port = (int)inputs[_portProperty.Name]!;
-            string username = (string)inputs[_usernameProperty.Name]!;
-            string password = (string)inputs[_passwordProperty.Name]!;
-            SecureSocketOptions socketOption = (SecureSocketOptions)inputs[_secureSocketOptionsProperty.Name]!;
-            TextFormat format = (TextFormat)inputs[_messageBodyTypeProperty.Name]!;
+            string from = context.GetInput<string>(_fromProperty);
+            string fromName = context.GetInput<string>(_fromNameProperty);
+            string to = context.GetInput<string>(_toProperty);
+            string toName = context.GetInput<string>(_toNameProperty);
+            string subject = context.GetInput<string>(_subjectProperty);
+            string body = context.GetInput<string>(_bodyProperty);
+            string host = context.GetInput<string>(_hostProperty);
+            int port = context.GetInput<int>(_portProperty);
+            string username = context.GetInput<string>(_usernameProperty);
+            string password = context.GetInput<string>(_passwordProperty);
+            SecureSocketOptions socketOption = context.GetInput<SecureSocketOptions>(_secureSocketOptionsProperty);
+            TextFormat format = context.GetInput<TextFormat>(_messageBodyTypeProperty);
 
             // Setup the message that is going to be sent
             var message = new MimeMessage();

@@ -54,21 +54,13 @@
 					<OptionsText>Cancel|Continue</OptionsText>
 				</Inputs>
 				<Connections>
-					<Cancel>PreProcess_03</Cancel>
-					<Continue>PreProcess_04</Continue>
+					<Cancel></Cancel>
+					<Continue>PreProcess_03</Continue>
 				</Connections>
 			</Node>
 
-			<!-- If the user wanted to cancel, kill the pipeline -->
-			<Node Name="Prevent Continue" ID="PreProcess_03" TypeID="FailNode">
-				<Inputs>
-					<Code>0</Code>
-					<Message>Cancelled operation, not performing any delete operations</Message>
-				</Inputs>
-			</Node>
-
 			<!-- We can export the values that need to be processed to the next stage -->
-			<Node Name="Export Target Values" ID="PreProcess_04" TypeID="ExportValuesNode">
+			<Node Name="Export Target Values" ID="PreProcess_03" TypeID="ExportValuesNode">
 				<Inputs>
 					<TypeFilter>{TypeFilter}</TypeFilter>
 					<SearchDir>{InputDir}/{SelectedLibrary}</SearchDir>

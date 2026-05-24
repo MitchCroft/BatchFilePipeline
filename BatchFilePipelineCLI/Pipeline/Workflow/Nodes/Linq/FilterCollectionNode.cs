@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Comparison;
 using BatchFilePipelineCLI.Utility.Extensions;
@@ -78,18 +79,18 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Linq
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Retrieve the values that will be used for processing
-            IEnumerable collection = (IEnumerable)inputs[_collectionProperty.Name]!;
-            string subValuePath = (string)inputs[_subValueProperty.Name]!;
-            object filterValue = (object)inputs[_filterProperty.Name]!;
-            ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
-            bool resolve = (bool)inputs[_resolveProperty.Name]!;
+            IEnumerable collection = context.GetInput<IEnumerable>(_collectionProperty);
+            string subValuePath = context.GetInput<string>(_subValueProperty);
+            object filterValue = context.GetInput<object>(_filterProperty);
+            ComparisonMode mode = context.GetInput<ComparisonMode>(_comparisonModeProperty);
+            bool resolve = context.GetInput<bool>(_resolveProperty);
 
             // Check if the filter is comparable for processing
             IEnumerable? outputValue = (filterValue is IComparable comparableFilter ?

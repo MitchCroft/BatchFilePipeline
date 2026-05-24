@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -80,19 +81,19 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the properties that will be processed
-            ConnectionInfo connectionInfo = GetConnectionInfo(inputs);
-            string targetDir = (string)inputs[_targetDirProperty.Name]!;
-            string destinationPath = (string)inputs[_destinationPathProperty.Name]!;
-            string renameDirectory = (string)inputs[_renameDirectoryProperty.Name]!;
-            bool allowOverwrite = (bool)inputs[_allowOverwriteProperty.Name]!;
-            bool failOnDuplicate = (bool)inputs[_failOnDuplicateProperty.Name]!;
+            ConnectionInfo connectionInfo = GetConnectionInfo(context);
+            string targetDir = context.GetInput<string>(_targetDirProperty);
+            string destinationPath = context.GetInput<string>(_destinationPathProperty);
+            string renameDirectory = context.GetInput<string>(_renameDirectoryProperty);
+            bool allowOverwrite = context.GetInput<bool>(_allowOverwriteProperty);
+            bool failOnDuplicate = context.GetInput<bool>(_failOnDuplicateProperty);
 
             // Get the root directory that is to be copied
             var rootInfo = new DirectoryInfo(targetDir);

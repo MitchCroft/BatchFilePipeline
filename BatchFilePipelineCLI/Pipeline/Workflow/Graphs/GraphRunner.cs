@@ -1,12 +1,11 @@
 ﻿using BatchFilePipelineCLI.PropertyResolver;
-using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {
     /// <summary>
     /// A manager wrapper that can be used to run the functionality required for a graph at runtime
     /// </summary>
-    internal sealed class GraphRunner
+    public sealed class GraphRunner
     {
         /*----------Variables----------*/
         //PRIVATE
@@ -58,9 +57,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// Run the contained graph with the specified information and return the output that is resolved
         /// </summary>
         /// <param name="runtimeVariables">The collection of existing runtime variables that are available for use</param>
+        /// <param name="getSubProcess">Callback function that can be used to retrieve a sub-process graph runner for executing sub-graph functionality</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the result of the execution process</returns>
         public async ValueTask<ExecutionResult> ExecuteGraphAsync(IReadOnlyDictionary<string, object?> runtimeVariables,
+                                                                  Func<string, GraphRunner?>? getSubProcess,
                                                                   CancellationToken cancellationToken)
         {
             // Try to resolve the traversal depth that will be used when running this graph
@@ -74,7 +75,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             }
 
             // Process the graph result
-            return await _graph.ExecuteGraphAsync(EnvironmentVariables, runtimeVariables, maxTraversalDepth, cancellationToken);
+            return await _graph.ExecuteGraphAsync(EnvironmentVariables, runtimeVariables, getSubProcess, maxTraversalDepth, cancellationToken);
         }
     }
 }

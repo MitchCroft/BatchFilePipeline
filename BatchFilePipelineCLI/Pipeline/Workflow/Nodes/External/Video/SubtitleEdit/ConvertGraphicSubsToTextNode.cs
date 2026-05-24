@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -69,16 +70,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the information that is needed
-            string executable = (string)inputs[_executableProperty.Name]!;
-            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-            string sourceDir = (string)inputs[_sourceDirProperty.Name]!;
+            string executable = context.GetInput<string>(_executableProperty);
+            IEnumerable streams = context.GetInput<IEnumerable>(_streamsProperty);
+            string sourceDir = context.GetInput<string>(_sourceDirProperty);
 
             // We need a collection of the extracted subtitles from the process
             List<string> convertedFiles = new();

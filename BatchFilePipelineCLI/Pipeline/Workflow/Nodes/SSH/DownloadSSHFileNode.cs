@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using Renci.SshNet;
@@ -60,16 +61,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the properties that will be processed
-            ConnectionInfo connectionInfo = GetConnectionInfo(inputs);
-            string targetFile = (string)inputs[_targetFileProperty.Name]!;
-            string destinationPath = (string)inputs[_destinationPathProperty.Name]!;
+            ConnectionInfo connectionInfo = GetConnectionInfo(context);
+            string targetFile = context.GetInput<string>(_targetFileProperty);
+            string destinationPath = context.GetInput<string>(_destinationPathProperty);
 
             // Try to make the SSH connection
             using var sftp = new SftpClient(connectionInfo);

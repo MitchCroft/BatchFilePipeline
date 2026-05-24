@@ -71,16 +71,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Read in the values that will be used for testing
-            IComparable leftValue = (IComparable)inputs[_leftValueProperty.Name]!;
-            IComparable rightValue = (IComparable)inputs[_rightValueProperty.Name]!;
-            ComparisonMode mode = (ComparisonMode)inputs[_comparisonModeProperty.Name]!;
+            IComparable leftValue = context.GetInput<IComparable>(_leftValueProperty);
+            IComparable rightValue = context.GetInput<IComparable>(_rightValueProperty);
+            ComparisonMode mode = context.GetInput<ComparisonMode>(_comparisonModeProperty);
 
             // Perform the comparison
             bool boolResult = ComparisonUtility.Compare(leftValue, mode, rightValue, out int intResult);

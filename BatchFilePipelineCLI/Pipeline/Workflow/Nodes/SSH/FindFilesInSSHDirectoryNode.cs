@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Renci.SshNet;
 using System.IO.Enumeration;
@@ -9,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// <summary>
     /// Define a Node that allows for the identification of files within a directory on a remote SSH server
     /// </summary>
-    [PipelineNode(nameof(FindFilesInSSHDirectoryNode), NodeUsage.Identification)]
+    [PipelineNode(nameof(FindFilesInSSHDirectoryNode), NodeUsage.MainGraph)]
     internal sealed class FindFilesInSSHDirectoryNode : SSHBaseNode, IPipelineNode
     {
         /*----------Variables----------*/
@@ -68,17 +69,17 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                        CancellationToken cancellationToken)
         {
             // Retrieve the properties that will be processed
-            ConnectionInfo connectionInfo = GetConnectionInfo(inputs);
-            string searchDirectory = (string)inputs[_searchDirectoryProperty.Name]!;
-            string searchPattern = (string)inputs[_searchPatternProperty.Name]!;
-            SearchOption searchOption = (SearchOption)inputs[_searchOptionProperty.Name]!;
+            ConnectionInfo connectionInfo = GetConnectionInfo(context);
+            string searchDirectory = context.GetInput<string>(_searchDirectoryProperty);
+            string searchPattern = context.GetInput<string>(_searchPatternProperty);
+            SearchOption searchOption = context.GetInput<SearchOption>(_searchOptionProperty);
 
             // Find out how many filters there are that need processing
             string[] filterSegments = searchPattern.Split('|', StringSplitOptions.RemoveEmptyEntries);
@@ -137,7 +138,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
                                                                               [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             Logger.Log($"[{nameof(FindFilesInSSHDirectoryNode)}] Looking for files in: {searchDirectory}");
-            await foreach (var f in sftp.ListDirectoryAsync(searchDirectory, cancellationToken))
+            await foreach (var f in sftp.ListDirectoryAsync(searchDirectory.Replace('\\', '/'), cancellationToken))
             {
                 if (f.IsDirectory || f.Name.StartsWith('.'))
                 {
@@ -159,7 +160,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
                                                                                    [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             Queue<string> unsearched = new Queue<string>();
-            unsearched.Enqueue(searchDirectory);
+            unsearched.Enqueue(searchDirectory.Replace('\\', '/'));
             while (unsearched.Count > 0)
             {
                 string current = unsearched.Dequeue();

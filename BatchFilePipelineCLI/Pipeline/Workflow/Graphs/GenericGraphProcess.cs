@@ -69,7 +69,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             }
 
             // Try to execute the data on the graph
-            return await _graphRunner.ExecuteGraphAsync(runtimeVariables, cancellationToken);
+            return await _graphRunner.ExecuteGraphAsync(runtimeVariables, null, cancellationToken);
         }
 
         /// <summary>

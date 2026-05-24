@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
@@ -46,15 +47,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Get the elements that will need processing
-            string targetDir = (string)inputs[_targetDirProperty.Name]!;
-            bool recursive = (bool)inputs[_recursiveProperty.Name]!;
+            string targetDir = context.GetInput<string>(_targetDirProperty);
+            bool recursive = context.GetInput<bool>(_recursiveProperty);
 
             // Copy the file over
             try

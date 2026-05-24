@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
@@ -57,15 +58,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Retrieve the properties that will be processed
-            object sourceProperty = (object)inputs[_sourceProperty.Name]!;
-            string pathProperty = (string)inputs[_pathProperty.Name]!;
+            object sourceProperty = context.GetInput<object>(_sourceProperty);
+            string pathProperty = context.GetInput<string>(_pathProperty);
 
             // Process the selection of the required sub-value for use
             if (Resolver.TryResolveReflectiveProperty(sourceProperty, pathProperty, out var resultObj) == false)

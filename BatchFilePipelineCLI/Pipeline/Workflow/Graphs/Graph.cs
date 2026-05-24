@@ -9,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
     /// <summary>
     /// Defines a collection of loosly connected nodes that can be run as a graph
     /// </summary>
-    internal sealed class Graph
+    public sealed class Graph
     {
         /*----------Variables----------*/
         //CONST
@@ -64,11 +64,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// </summary>
         /// <param name="environmentVariables">The collection of environment variables that can be used when processing node input</param>
         /// <param name="runtimeVariables">The collection of runtime variables that can be used when processing node input</param>
+        /// <param name="getSubProcess">Callback function that can be used to retrieve a sub-process graph runner for executing sub-graph functionality</param>
         /// <param name="maxTraversalDepth">The maximum number of steps that can be navigated on the graph before it is cancelled</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the execution of the process</param>
         /// <returns>Returns an output object that contains the result of the graph execution that was needed for processing</returns>
         public async ValueTask<ExecutionResult> ExecuteGraphAsync(IReadOnlyDictionary<string, string?> environmentVariables,
                                                                   IReadOnlyDictionary<string, object?> runtimeVariables,
+                                                                  Func<string, GraphRunner?>? getSubProcess,
                                                                   int maxTraversalDepth,
                                                                   CancellationToken cancellationToken)
         {
@@ -164,7 +166,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                         // We can process the node operation and receive the outputs that need to be handled
                         try
                         {
-                            nodeOutput = await nodeInstance.ProcessNodeResultAsync(nodeInputBuffer, cancellationToken);
+                            PipelineExecutionContext context = new PipelineExecutionContext
+                            {
+                                EnvironmentVariables = environmentVariables,
+                                RuntimeVariables = localScopeRuntime,
+                                InputVariables = nodeInputBuffer,
+                                GetSubProcess = getSubProcess
+                            };
+                            nodeOutput = await nodeInstance.ProcessNodeResultAsync(context, cancellationToken);
                         }
                         catch (Exception ex)
                         {

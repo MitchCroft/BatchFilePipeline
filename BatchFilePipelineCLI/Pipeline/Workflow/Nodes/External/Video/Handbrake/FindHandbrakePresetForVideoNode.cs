@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
+﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.Data;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -58,15 +59,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Get the properties that will be used for processing
-            VideoDetails videoInfo = (VideoDetails)inputs[_videoInfoProperty.Name]!;
-            IEnumerable<HandbrakePresetOption> handbrakePresets = (IEnumerable<HandbrakePresetOption>)inputs[_handbrakePresetsProperty.Name]!;
+            VideoDetails videoInfo = context.GetInput<VideoDetails>(_videoInfoProperty);
+            IEnumerable<HandbrakePresetOption> handbrakePresets = context.GetInput<IEnumerable<HandbrakePresetOption>>(_handbrakePresetsProperty);
 
             // Look for the video stream in the file that can be compared against
             VideoDataStream? videoStream = videoInfo.Streams.FirstOrDefault(x => x.StreamType == StreamType.Video) as VideoDataStream;

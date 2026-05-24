@@ -1,4 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEdit.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
@@ -86,16 +87,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
         /// <summary>
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
-        /// <param name="inputs">The collection of inputs that have been described for this node</param>
+        /// <param name="context">The context for the currently executing pipline node</param>
         /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public ValueTask<ExecutionResult> ProcessNodeResultAsync(IReadOnlyDictionary<string, object?> inputs,
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
                                                                  CancellationToken cancellationToken)
         {
             // Get the properties that will be needed for evaluation
-            IEnumerable streams = (IEnumerable)inputs[_streamsProperty.Name]!;
-            string sourceDir = (string)inputs[_sourceDirProperty.Name]!;
-            string dictionaryPath = (string)inputs[_dictionaryFileProperty.Name]!;
+            IEnumerable streams = context.GetInput<IEnumerable>(_streamsProperty);
+            string sourceDir = context.GetInput<string>(_sourceDirProperty);
+            string dictionaryPath = context.GetInput<string>(_dictionaryFileProperty);
 
             // Try to read the dictionary data in for use
             HashSet<string> dictionary = [.. File.ReadAllLines(dictionaryPath).Select(x => x.Trim().ToLower())];

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+		Relocate Subtitles SSH
+
+		This pipeline will find subtitle files for different video entries,
+		move and rename them for the playback use with the media.
+
+		Required inputs:
+		- InputDir = The directory on the remote server where the input video files should be processed from
+		- ArchiveDir = The directory on the remote server where the subtitle files should be processed from
+		- WorkingDir = The directory on the local computer where the working manifest can be kept for tracking progression
+-->
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Remove Files Of Type SSH">
+	<!-- Define some basic settings that will be used to process the collections of files -->
+	<Environment>
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
+	</Environment>
+
+	<Workflow>
+		<!-- We're going to run this over the two different library directories to know which files should be modified -->
+		<PreProcessGraph>
+			<!-- Which library of files are we wanting to explore for processing -->
+			<Node Name="Select Library Type" ID="PreProcess_00" TypeID="UserBranchNode">
+				<Inputs>
+					<Prompt>Which library do you wish to process?</Prompt>
+					<OptionsText>Movies|Shows</OptionsText>
+					<DefaultSelection>0</DefaultSelection>
+				</Inputs>
+				<Outputs>
+					<SelectedValue>SelectedLibrary</SelectedValue>
+				</Outputs>
+				<Connections>
+					<Default>PreProcess_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We want to export that final directory to the rest of the graph for use -->
+			<Node Name="Export Working Directory" ID="PreProcess_01" TypeID="ExportValuesNode">
+				<Inputs>
+					<InputDir>{InputDir}/{SelectedLibrary}</InputDir>
+					<ArchiveDir>{ArchiveDir}/{SelectedLibrary}</ArchiveDir>
+				</Inputs>
+			</Node>
+		</PreProcessGraph>
+
+		<!-- The main graph is going to identify all video files in the input directory, look for associated subtitles in the archive and copy them into place -->
+		<MainGraph>
+			<!-- We need to find all of the video files in the target destination for processing -->
+			<IdentificationGraph>
+				<!-- Locate all of the files of the expected types -->
+				<Node Name="Find Video Files" ID="Identification_00" TypeID="FindFilesInSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<SearchDirectory>{InputDir}</SearchDirectory>
+						<SearchPattern>{ExtensionFilter}</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>Files</Output>
+					</Outputs>
+					<Connections>
+						<Default>Identification_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Export the collection of files that were identified for use at runtime for processing -->
+				<Node Name="Export Found Files" ID="Identification_01" TypeID="ExportValuesNode">
+					<Inputs>
+						<Identifiers>{Files}</Identifiers>
+					</Inputs>
+				</Node>
+			</IdentificationGraph>
+
+			<!-- Iterate over all of the video files that were found and find the associated subtitles -->
+			<ProcessGraph>
+				<!-- Check to see if the file has already been processed, can skip if done already. Get the existing state that is in the working manifest -->
+				<Node Name="Check if File has Been Processed" ID="Process_00" TypeID="GetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{WorkingDir}/RelocateSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+					</Inputs>
+					<Outputs>
+						<Output>FileState</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_01</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if the file was processed already -->
+				<Node Name="Compare Initial State" ID="Process_01" TypeID="ComparisonNode">
+					<Inputs>
+						<LeftValue>{FileState}</LeftValue>
+						<RightValue>Complete</RightValue>
+					</Inputs>
+					<Connections>
+						<!-- Intentionally left blank so we skip processing of this file -->
+						<True></True>
+
+						<!-- Other, we can continue on to processing the file -->
+						<False>Process_02</False>
+					</Connections>
+				</Node>
+
+				<!-- Get relative path from the input directory to the file in the subtitle archive -->
+				<Node Name="Get File Relative Path" ID="Process_02" TypeID="GetRelativePathNode">
+					<Inputs>
+						<RelativeTo>{InputDir}</RelativeTo>
+						<Path>{CurrentIdentifier}</Path>
+					</Inputs>
+					<Outputs>
+						<Output>RelativeDir</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_03</Default>
+					</Connections>
+				</Node>
+
+				<!-- Check to see if there are any subtitle files archived for this entry -->
+				<Node Name="Check for Archived Subtitles" ID="Process_03" TypeID="PathExistsSHHNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<Path>{ArchiveDir}/{RelativeDir}/</Path>
+					</Inputs>
+					<Connections>
+						<!-- If there are no subtitles archived, then we can just flag this file as done and be done with it -->
+						<False>Process_End_00</False>
+
+						<!-- Otherwise, we will need to move on to process all of the files that are needed to be processed -->
+						<True>Process_04</True>
+					</Connections>
+				</Node>
+
+				<!-- Get the output directory where the subtitles will need to be moved to -->
+				<Node Name="Get Output Directory" ID="Process_04" TypeID="GetDirectoryNameNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+					</Inputs>
+					<Outputs>
+						<Output>OutputDirectory</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_05</Default>
+					</Connections>
+				</Node>
+
+				<!-- Get the name of the media file that is being processed -->
+				<Node Name="Get Media File Name" ID="Process_05" TypeID="GetFileNameNode">
+					<Inputs>
+						<FilePath>{CurrentIdentifier}</FilePath>
+						<IncludeExtension>False</IncludeExtension>
+					</Inputs>
+					<Outputs>
+						<Output>OutputFilename</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_06</Default>
+					</Connections>
+				</Node>
+
+				<!-- Find all of the subtitle files that are stored in the archive for the video file -->
+				<Node Name="Find Related Subtitles" ID="Process_06" TypeID="FindFilesInSSHDirectoryNode">
+					<Inputs>
+						<Host>{SSH_HOST}</Host>
+						<Username>{SSH_USER}</Username>
+						<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+						<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+						<SearchDirectory>{ArchiveDir}/{RelativeDir}/</SearchDirectory>
+						<SearchPattern>*.srt</SearchPattern>
+					</Inputs>
+					<Outputs>
+						<Output>SubtitleFiles</Output>
+					</Outputs>
+					<Connections>
+						<Default>Process_07</Default>
+					</Connections>
+				</Node>
+
+				<!-- We need to process the relocation graph for all of the subtitles we found -->
+				<Node Name="Iterate Over Subtitles" ID="Process_07" TypeID="ForEachNode">
+					<Inputs>
+						<Collection>{SubtitleFiles}</Collection>
+						<SubProcessId>RelocateSubtitleGraph</SubProcessId>
+					</Inputs>
+					<Connections>
+						<Default>Process_End_00</Default>
+					</Connections>
+				</Node>
+
+				<!-- We have finished with the file, we can mark it off as done so we don't process it again -->
+				<Node Name="Mark Off File in Manifest" ID="Process_End_00" TypeID="SetManifestDataNode">
+					<Inputs>
+						<ManifestPath>{WorkingDir}/RelocateSubtitlesSSH_Manifest.json</ManifestPath>
+						<Identifier>{CurrentIdentifier}</Identifier>
+						<Key>State</Key>
+						<Value>Complete</Value>
+					</Inputs>
+				</Node>
+			</ProcessGraph>
+
+			<!-- We can define a collection of sub-processes that can be executed by the main process graph to provide looping functionality -->
+			<SubProcessGraphs>
+				<!-- This graph will be used to process a directory of subtitle files and move them to the output location -->
+				<GraphDescription Name="Relocate Subtitle Graph" ID="RelocateSubtitleGraph">
+					<!-- Get the name of the file that is currently being processed -->
+					<Node Name="Identify Name of Subtitle File" ID="RelocateSubtitleGraph_00" TypeID="GetFileNameNode">
+						<Inputs>
+							<FilePath>{LoopValue}</FilePath>
+							<IncludeExtension>False</IncludeExtension>
+						</Inputs>
+						<Outputs>
+							<Output>SubtitleName</Output>
+						</Outputs>
+						<Connections>
+							<Default>RelocateSubtitleGraph_01</Default>
+						</Connections>
+					</Node>
+
+					<!-- Copy the file from the archive and put it in the output directory -->
+					<Node Name="Copy Subtitle File to Output" ID="RelocateSubtitleGraph_01" TypeID="CopyFileSSHNode">
+						<Inputs>
+							<Host>{SSH_HOST}</Host>
+							<Username>{SSH_USER}</Username>
+							<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+							<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+							<Source>{LoopValue}</Source>
+							<Destination>{OutputDirectory}/{OutputFilename}.{SubtitleName}.srt</Destination>
+							<AllowOverwrite>True</AllowOverwrite>
+						</Inputs>
+						<Outputs>
+							<Output>CopiedFilePath</Output>
+						</Outputs>
+						<Connections>
+							<Default>RelocateSubtitleGraph_02</Default>
+						</Connections>
+					</Node>
+
+					<!-- Test the exporting of values from a sub-process for use -->
+					<Node Name="Export New Filepath" ID="RelocateSubtitleGraph_02" TypeID="ExportValuesNode">
+						<Inputs>
+							<NewFilePaths>{CopiedFilePath}</NewFilePaths>
+						</Inputs>
+					</Node>
+				</GraphDescription>
+			</SubProcessGraphs>
+		</MainGraph>
+	</Workflow>
+</Pipeline>

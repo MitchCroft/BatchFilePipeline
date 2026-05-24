@@ -66,6 +66,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         );
 
         /// <summary>
+        /// The collection of ID'd runners that can be used as sub-processes for a collection of data within the graph
+        /// </summary>
+        private readonly Dictionary<string, GraphRunner> _subProcessGraphRunners = new();
+
+        /// <summary>
         /// The runner that will be used to perform the file identification process
         /// </summary>
         private GraphRunner? _identificationGraphRunner;
@@ -105,9 +110,44 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             // Grab the environment variables that can be used
             _environmentVariables = environmentVariables.Merge(graphDescription.Environment ?? new KeyValueSection(), argumentVariables);
 
-            // Try to load the different graphs that are needed for processing
-            return GraphRunnerBuilder.TryBuildGraphRunner(graphDescription.IdentificationGraph, library, NodeUsage.Identification, environmentVariables, argumentVariables, out _identificationGraphRunner) &&
-                GraphRunnerBuilder.TryBuildGraphRunner(graphDescription.ProcessGraph, library, NodeUsage.Process, environmentVariables, argumentVariables, out _processGraphRunner);
+            // Attempt to create the main graph sections for proecssing results
+            if (GraphRunnerBuilder.TryBuildGraphRunner(graphDescription.IdentificationGraph, library, NodeUsage.Identification, environmentVariables, argumentVariables, out _identificationGraphRunner) == false ||
+                GraphRunnerBuilder.TryBuildGraphRunner(graphDescription.ProcessGraph, library, NodeUsage.Process, environmentVariables, argumentVariables, out _processGraphRunner) == false)
+            {
+                return false;
+            }
+
+            // Identify all of the sub-processes that are defined and create runners for their definitions
+            _subProcessGraphRunners.Clear();
+            for (int i = 0; i < graphDescription.SubProcessGraphs?.Length; ++i)
+            {
+                // There must be an ID associated with this graph so it can be referenced
+                var subProcGraph = graphDescription.SubProcessGraphs[i];
+                if (string.IsNullOrWhiteSpace(subProcGraph.ID) == true)
+                {
+                    Logger.Error($"[{nameof(MainGraphProcess)}] Failed to build sub-process graph '{i}'{(string.IsNullOrEmpty(subProcGraph.Name) ? $" ({subProcGraph.Name})" : string.Empty)} as there is no ID defined");
+                    return false;
+                }
+
+                // If the ID is already in use, that's another problem
+                if (_subProcessGraphRunners.TryGetValue(subProcGraph.ID, out var prevSubProcGraph) == true)
+                {
+                    Logger.Error($"[{nameof(MainGraphProcess)}] Failed to build build sub-process graph '{i}'{(string.IsNullOrEmpty(subProcGraph.Name) ? $" ({subProcGraph.Name})" : string.Empty)}, as the ID '{subProcGraph.ID}' is already in use");
+                    return false;
+                }
+
+                // Try to build the graph runner for use
+                if (GraphRunnerBuilder.TryBuildGraphRunner(subProcGraph, library, NodeUsage.Process, environmentVariables, argumentVariables, out var subProcessGraphRunner) == false)
+                {
+                    return false;
+                }
+
+                // We've got the sub-process graph that can be used for processing data
+                _subProcessGraphRunners[subProcGraph.ID] = subProcessGraphRunner;
+            }
+
+            // If we got this far, we're good
+            return true;
         }
 
         /// <summary>
@@ -134,11 +174,11 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             if (Resolver.TryResolveEnvironmentVariable(_sleepPeriodProperty, _environmentVariables!, out int sleepPeriod) == false)
             {
                 sleepPeriod = (int)_sleepPeriodProperty.DefaultValue!;
-                Logger.Warning($"[{nameof(MainGraphProcess)}] Unabel to resolve the environment variable '{_sleepPeriodProperty}'");
+                Logger.Warning($"[{nameof(MainGraphProcess)}] Unable to resolve the environment variable '{_sleepPeriodProperty}'");
             }
             if (Resolver.TryResolveEnvironmentVariable(_propergateFailureProperty, _environmentVariables!, out bool propergateFailure) == false)
             {
-                Logger.Warning($"[{nameof(MainGraphProcess)}] Unabel to resolve the environment variable '{_propergateFailureProperty}'");
+                Logger.Warning($"[{nameof(MainGraphProcess)}] Unable to resolve the environment variable '{_propergateFailureProperty}'");
             }
 
             // There may be values that we need to export from this graph
@@ -158,7 +198,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 do
                 {
                     // Process the graph that will be used to identify files that are needed for processing
-                    var idOutput = await _identificationGraphRunner.ExecuteGraphAsync(runtimeVariables, token);
+                    var idOutput = await _identificationGraphRunner.ExecuteGraphAsync(runtimeVariables, null, token);
                     if (token.IsCancellationRequested == true)
                     {
                         break;
@@ -201,7 +241,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                                 instancedRuntimeVariables[CURRENT_IDENTIFIER_PROPERTY] = id;
 
                                 // Process the graph for the identifier
-                                var processOutput = await _processGraphRunner.ExecuteGraphAsync(instancedRuntimeVariables, token);
+                                var processOutput = await _processGraphRunner.ExecuteGraphAsync(instancedRuntimeVariables, TryGetSubProcessById, token);
                                 if (token.IsCancellationRequested == true)
                                 {
                                     break;
@@ -290,5 +330,15 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// Use the name of the type as the string description
         /// </summary>
         public override string ToString() => nameof(MainGraphProcess);
+
+        //PRIVATE
+
+        /// <summary>
+        /// Try to get a sub-process graph runner by the given ID, which can be used for processing a collection of data within the graph
+        /// </summary>
+        /// <param name="id">The ID of the graph to be retrieved</param>
+        /// <returns>Returns the graph runner or null if none could be found for the ID</returns>
+        private GraphRunner? TryGetSubProcessById(string id) =>
+            _subProcessGraphRunners.TryGetValue(id, out var graphRunner) == true ? graphRunner : null;
     }
 }
