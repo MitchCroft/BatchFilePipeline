@@ -72,7 +72,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             for (int i = 0; i < nodes.Count; ++i)
             {
                 // This node needs to have a valid ID that can be used
-                if (string.IsNullOrWhiteSpace(nodes[i].ID) == true)
+                if (string.IsNullOrWhiteSpace(nodes[i].Id) == true)
                 {
                     Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node at index {i} '{nodes[i]}', there is no ID assigned");
                     success = false;
@@ -80,25 +80,25 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 }
 
                 // Check that the ID is unique and can be used
-                if (nodeDescriptions.TryGetValue(nodes[i].ID!, out var previousNode) == true)
+                if (nodeDescriptions.TryGetValue(nodes[i].Id!, out var previousNode) == true)
                 {
-                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the ID '{nodes[i].ID}' is already in use by '{previousNode.Name}'");
+                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the ID '{nodes[i].Id}' is already in use by '{previousNode.Name}'");
                     success = false;
                     continue;
                 }
 
                 // Check that there is a type ID available
-                if (string.IsNullOrWhiteSpace(nodes[i].TypeID) == true)
+                if (string.IsNullOrWhiteSpace(nodes[i].TypeId) == true)
                 {
-                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, no {nameof(NodeDescription.TypeID)} value could be found");
+                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, no {nameof(NodeDescription.TypeId)} value could be found");
                     success = false;
                     continue;
                 }
 
                 // Check that we can use a node of this type
-                if (library.TryGetNodeCharacteristics(nodes[i].TypeID!, out var nodeCharacteristics) == false)
+                if (library.TryGetNodeCharacteristics(nodes[i].TypeId!, out var nodeCharacteristics) == false)
                 {
-                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the characteristics for Type ID '{nodes[i].TypeID}' couldn't be found");
+                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the characteristics for Type ID '{nodes[i].TypeId}' couldn't be found");
                     success = false;
                     continue;
                 }
@@ -106,22 +106,22 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 // Check that this node can be used on the graph
                 if ((nodeCharacteristics.UsageFlags & validNodes) == 0)
                 {
-                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the node Type ID '{nodes[i].TypeID}' is not valid for use in this graph");
+                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, the node Type ID '{nodes[i].TypeId}' is not valid for use in this graph");
                     success = false;
                     continue;
                 }
 
                 // Try to get the instance of the node that will be used
-                if (library.TryGetInstanceOfNode(nodes[i].TypeID!, out var nodeInstance) == false)
+                if (library.TryGetInstanceOfNode(nodes[i].TypeId!, out var nodeInstance) == false)
                 {
-                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, an instance of Type ID '{nodes[i].TypeID}' couldn't be created");
+                    Logger.Error($"[{nameof(GraphRunnerBuilder)}] Failed when parsing the node '{nodes[i]}' at index {i}, an instance of Type ID '{nodes[i].TypeId}' couldn't be created");
                     success = false;
                     continue;
                 }
 
                 // Store the values for processing later
-                graphNodes[nodes[i].ID!] = nodeInstance;
-                nodeDescriptions[nodes[i].ID!] = nodes[i];
+                graphNodes[nodes[i].Id!] = nodeInstance;
+                nodeDescriptions[nodes[i].Id!] = nodes[i];
 
                 // If this is the first node, it'll be the head of the graph
                 if (i == 0)

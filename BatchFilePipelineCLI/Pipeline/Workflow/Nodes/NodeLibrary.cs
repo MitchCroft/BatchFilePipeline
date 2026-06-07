@@ -18,19 +18,19 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         private readonly Type _targetNodeType = typeof(IPipelineNode);
 
         /// <summary>
-        /// Cache the <see cref="IPipelineNode"/> types that can be used based on the <see cref="PipelineNodeAttribute.TypeID"/>
+        /// Cache the <see cref="IPipelineNode"/> types that can be used based on the name of the node
         /// </summary>
-        private readonly Dictionary<string/*TypeID*/, Type> _nodeLookup = new();
+        private readonly Dictionary<string/*TypeId*/, Type> _nodeLookup = new();
 
         /// <summary>
         /// Store the attribute that is associated with each Node to know how they should be processed
         /// </summary>
-        private readonly Dictionary<string/*TypeID*/, PipelineNodeAttribute> _nodeCharacteristics = new();
+        private readonly Dictionary<string/*TypeId*/, PipelineNodeAttribute> _nodeCharacteristics = new();
 
         /// <summary>
         /// Store the instances of the shared pipeline nodes that can be used for processing
         /// </summary>
-        private readonly Dictionary<string/*TypeID*/, IPipelineNode> _sharedNodes = new();
+        private readonly Dictionary<string/*TypeId*/, IPipelineNode> _sharedNodes = new();
 
         /*----------Functions----------*/
         //PUBLIC
@@ -86,6 +86,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
                     success = false;
                     continue;
                 }
+
                 // TODO: #Mitch - Replace the direct node lookup with factory handlers that can be used to create the nodes, removing the need for the default constructor
                 if (type.GetConstructor(Type.EmptyTypes) == null)
                 {
@@ -94,17 +95,18 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
                     continue;
                 }
 
-                // Check that we don't clash with an existing use of the ID
-                if (_nodeLookup.TryGetValue(characteristic.TypeID, out var existingType) == true)
+                // Use the name of the class as the ID for the node
+                string nodeTypeId = type.Name;
+                if (_nodeLookup.TryGetValue(nodeTypeId, out var existingType) == true)
                 {
-                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. The assigned ID '{characteristic.TypeID}' is already in use by '{existingType}'");
+                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. The ID '{nodeTypeId}' is already in use by '{existingType}'");
                     success = false;
                     continue;
                 }
 
                 // Store the values for later use
-                _nodeLookup[characteristic.TypeID] = type;
-                _nodeCharacteristics[characteristic.TypeID] = characteristic;
+                _nodeLookup[nodeTypeId] = type;
+                _nodeCharacteristics[nodeTypeId] = characteristic;
             }
             return success;
         }
@@ -117,7 +119,12 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         /// <returns>Returns true if node characteristics with the specified ID can be found</returns>
         public bool TryGetNodeCharacteristics(string typeId, [NotNullWhen(true)] out PipelineNodeAttribute? characteristics)
         {
-            return _nodeCharacteristics.TryGetValue(typeId, out characteristics);
+            if (TryResolveValidNodeTypeId(typeId, out var validTypeId) == false)
+            {
+                characteristics = null;
+                return false;
+            }
+            return _nodeCharacteristics.TryGetValue(validTypeId, out characteristics);
         }
 
         /// <summary>
@@ -129,7 +136,8 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         public bool TryGetInstanceOfNode(string typeId, [NotNullWhen(true)] out IPipelineNode? node)
         {
             // Check if we have a node for the type
-            if (_nodeLookup.TryGetValue(typeId, out var nodeType) == false)
+            if (TryResolveValidNodeTypeId(typeId, out var validTypeId) == false ||
+                _nodeLookup.TryGetValue(validTypeId, out var nodeType) == false)
             {
                 node = null;
                 return false;
@@ -158,9 +166,37 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         /// Retrieve a list of all of the Node types that were found within the library
         /// </summary>
         /// <returns>Returns an enumerable for all of the nodes and their characteristics</returns>
-        public IEnumerable<(Type nodeType, PipelineNodeAttribute characteristics)> GetNodeTypes()
+        public IEnumerable<(Type nodeType, PipelineNodeAttribute characteristics)> GetNodeTypes() =>
+            _nodeLookup.Select(x => (x.Value, _nodeCharacteristics[x.Key]));
+
+        //PRIVATE
+
+        /// <summary>
+        /// Try to find a valid Node Type ID that can be used for the supplied input
+        /// </summary>
+        /// <param name="inputTypeId">The specified Node Type ID that has been provided</param>
+        /// <param name="nodeTypeId">Passes out the valid Node Type ID that can be used for identification</param>
+        /// <returns>Returns true if a matching, valid Type ID could be found</returns>
+        private bool TryResolveValidNodeTypeId(string inputTypeId, [NotNullWhen(true)] out string? nodeTypeId)
         {
-            return _nodeLookup.Select(x => (x.Value, _nodeCharacteristics[x.Key]));
+            // Check if there is a match for the default input
+            if (_nodeCharacteristics.ContainsKey(inputTypeId) == true)
+            {
+                nodeTypeId = inputTypeId;
+                return true;
+            }
+
+            // Check if there is a match for the input with the "Node" suffix added, as this is a common convention
+            inputTypeId += "Node";
+            if (_nodeCharacteristics.ContainsKey(inputTypeId) == true)
+            {
+                nodeTypeId = inputTypeId;
+                return true;
+            }
+
+            // No match could be found for use
+            nodeTypeId = null;
+            return false;
         }
     }
 }

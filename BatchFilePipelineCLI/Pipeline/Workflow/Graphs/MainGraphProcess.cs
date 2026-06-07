@@ -123,16 +123,16 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
             {
                 // There must be an ID associated with this graph so it can be referenced
                 var subProcGraph = graphDescription.SubProcessGraphs[i];
-                if (string.IsNullOrWhiteSpace(subProcGraph.ID) == true)
+                if (string.IsNullOrWhiteSpace(subProcGraph.Id) == true)
                 {
                     Logger.Error($"[{nameof(MainGraphProcess)}] Failed to build sub-process graph '{i}'{(string.IsNullOrEmpty(subProcGraph.Name) ? $" ({subProcGraph.Name})" : string.Empty)} as there is no ID defined");
                     return false;
                 }
 
                 // If the ID is already in use, that's another problem
-                if (_subProcessGraphRunners.TryGetValue(subProcGraph.ID, out var prevSubProcGraph) == true)
+                if (_subProcessGraphRunners.TryGetValue(subProcGraph.Id, out var prevSubProcGraph) == true)
                 {
-                    Logger.Error($"[{nameof(MainGraphProcess)}] Failed to build build sub-process graph '{i}'{(string.IsNullOrEmpty(subProcGraph.Name) ? $" ({subProcGraph.Name})" : string.Empty)}, as the ID '{subProcGraph.ID}' is already in use");
+                    Logger.Error($"[{nameof(MainGraphProcess)}] Failed to build build sub-process graph '{i}'{(string.IsNullOrEmpty(subProcGraph.Name) ? $" ({subProcGraph.Name})" : string.Empty)}, as the ID '{subProcGraph.Id}' is already in use");
                     return false;
                 }
 
@@ -143,7 +143,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 }
 
                 // We've got the sub-process graph that can be used for processing data
-                _subProcessGraphRunners[subProcGraph.ID] = subProcessGraphRunner;
+                _subProcessGraphRunners[subProcGraph.Id] = subProcessGraphRunner;
             }
 
             // If we got this far, we're good

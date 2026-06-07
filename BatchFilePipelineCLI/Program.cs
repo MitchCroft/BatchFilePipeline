@@ -9,7 +9,6 @@ using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
-using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI
 {

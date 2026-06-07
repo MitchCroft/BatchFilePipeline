@@ -24,13 +24,13 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <summary>
         /// Define an additional layer of pipeline environment properties that can be applied to the process
         /// </summary>
-        [XmlElement("Environment")]
+        [XmlElement(nameof(Environment))]
         public KeyValueSection Environment { get; set; } = new();
 
         /// <summary>
         /// The workflow description that defines the different stages that should be run when processing files
         /// </summary>
-        [XmlElement("Workflow")]
+        [XmlElement(nameof(Workflow))]
         public WorkflowDescription Workflow { get; set; } = new();
 
         /*----------Functions----------*/

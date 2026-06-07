@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Name of Pipeline">
+	<!-- Allow for the defining of default environment variables that will be included when the pipeline is loaded -->
+	<Environment>
+		<Key>Value</Key>
+		<Key>Value</Key>
+	</Environment>
+
+	<!-- We can define a number of functions that can operate as independent collections -->
+	<Workflow EntryGraph="MainGraph">
+		<!-- If the workflow is going to be a starting point, it needs to nominate a starting graph to load -->
+		<Graph Name="Main Graph" Id="MainGraph" EntryNodeId="MainGraph_00">
+			<!-- We can use a Node to get a resulting combined path -->
+			<Node Name="Entry Point of Workflow" Id="MainGraph_00" TypeId="CombinePath">
+				<Inputs>
+					<LeftPath>C://Users/</LeftPath>
+					<RightPath>Mitch/Documents/</RightPath>
+				</Inputs>
+				<Outputs>
+					<Path>TargetPath</Path>
+				</Outputs>
+				<Connections>
+					<Default>MainGraph_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can use the path to find all files of a certain type in the directory -->
+			<Node Name="Find All Text Files" Id="MainGraph_01" TypeId="FindFilesInDirectory">
+				<Inputs>
+					<Directory>{TargetPath}</Directory>
+					<SearchPattern>*.txt</SearchPattern>
+				</Inputs>
+				<Outputs>
+					<Files>TextFiles</Files>
+				</Outputs>
+				<Connections>
+					<Default>MainGraph_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- Process all of the files that were found in the directory -->
+			<Node Name="Process All Text Files" Id="MainGraph_02" TypeId="ForEachInCollection">
+				<Inputs>
+					<Collection>{TextFiles}</Collection>
+					<GraphId>ProcText</GraphId>
+				</Inputs>
+			</Node>
+		</Graph>
+
+		<!-- We can setup a different graph that will be able to process generic values that it receives -->
+		<Graph Name="Process Text Files" Id="ProcText" EntryNodeId="ProcText_00">
+			<!-- We are expecting some incoming properties to be available for use within this graph -->
+			<Required>CurrentValue</Required>
+			<Required>CurrentIndex</Required>
+
+			<!-- Receive the initial file and look for a matching meta file in the archive -->
+			<Node Name="Find Meta File" Id="ProcText_00" TypeId="FindFileWithName">
+				<Inputs>
+					<Directory>Archive/</Directory>
+					<SearchPattern>{CurrentValue}.meta</SearchPattern>
+				</Inputs>
+				<Outputs>
+					<FilePath>MetaFilePath</FilePath>
+				</Outputs>
+				<Connections>
+					<Default>ProcText_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can also refrence graphs that exist in other pipelines so we can share functionality modules between assets -->
+			<Node Name="Log File" Id="ProcText_01" TypeId="RunGraph">
+				<Inputs>
+					<Pipeline>./IOFunctionality.xml</Pipeline>
+					<GraphId>LogFile</GraphId>
+				</Inputs>
+				<Outputs>
+					<FileContent>Content</FileContent>
+				</Outputs>
+				<Connections>
+					<Default>ProcText_02</Default>
+				</Connections>
+			</Node>
+		</Graph>
+	</Workflow>
+</Pipeline>

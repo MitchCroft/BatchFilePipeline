@@ -11,21 +11,25 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         //PUBLIC
 
         /// <summary>
-        /// The graph elements that will be processed *once* before the main process is run for all file entries collected
+        /// Defines the ID of the graph within this workflow description that should be used as the entry point when running the workflow directly
         /// </summary>
-        [XmlElement("PreProcessGraph")]
-        public GraphDescription PreProcessGraph { get; set; } = new GraphDescription();
+        [XmlAttribute("EntryGraph")]
+        public string? EntryGraph { get; set; } = string.Empty;
 
         /// <summary>
-        /// The collection of graph elements that will be run over all identified files
+        /// Flags if this workflow description is a module of graphs that can be run
         /// </summary>
-        [XmlElement("MainGraph")]
-        public MainGraphDescription MainGraph { get; set; } = new MainGraphDescription();
+        /// <remarks>
+        /// A module is a collection of functionality, but it can't be run directly as a workflow.
+        /// It must be referenced by another executing workflow description that specifies an entry graph.
+        /// </remarks>
+        public bool IsModule => string.IsNullOrWhiteSpace(EntryGraph);
 
         /// <summary>
-        /// The graph elements that will be processed *once* after the main process is run for all file entries collected
+        /// Deines the collection of graph elements within this workflow that can be used to process
+        /// functionality while running a workflow
         /// </summary>
-        [XmlElement("PostProcessGraph")]
-        public GraphDescription PostProcessGraph { get; set; } = new GraphDescription();
+        [XmlElement("Graph")]
+        public GraphDescription[] Graphs { get; set; } = Array.Empty<GraphDescription>();
     }
 }

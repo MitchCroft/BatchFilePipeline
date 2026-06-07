@@ -16,7 +16,7 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <remarks>
         /// This is intended to be able to distinguish the different graphs defined in a workflow
         /// </remarks>
-        [XmlAttribute("Name")]
+        [XmlAttribute(nameof(Name))]
         public string? Name { get; set; } = null;
 
         /// <summary>
@@ -25,14 +25,20 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// <remarks>
         /// This is intended to give a connection to be used in the sub-process setup
         /// </remarks>
-        [XmlAttribute("ID")]
-        public string? ID { get; set; } = null;
+        [XmlAttribute(nameof(Id))]
+        public string? Id { get; set; } = null;
 
         /// <summary>
-        /// Define an additional layer of pipeline environment properties that can be applied to the process
+        /// The unique ID of the node on the graph that will be run as the entry point for the graph when it is processed
         /// </summary>
-        [XmlElement("Environment")]
-        public KeyValueSection Environment { get; set; } = new();
+        [XmlAttribute(nameof(EntryNodeId))]
+        public string? EntryNodeId { get; set; } = null;
+
+        /// <summary>
+        /// An array of the required properties that must exist at runtime for the graph to be able to run
+        /// </summary>
+        [XmlElement("Required")]
+        public string[] RequiredProperties { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// The collection of node definitions that make up this graph

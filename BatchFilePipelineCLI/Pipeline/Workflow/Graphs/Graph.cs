@@ -93,7 +93,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
                 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
                 // Retrieve the node instance that is to be processed
-                if (_graph.TryGetValue(activeNode.ID!, out var nodeInstance) == false)
+                if (_graph.TryGetValue(activeNode.Id!, out var nodeInstance) == false)
                 {
                     return new ExecutionResult
                     (
