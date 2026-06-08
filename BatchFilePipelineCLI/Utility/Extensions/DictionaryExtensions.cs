@@ -3,7 +3,7 @@
     /// <summary>
     /// Provide additional functionality for <see cref="IDictionary{TKey, TValue}"/> values
     /// </summary>
-    internal static class DictionaryExtensions
+    public static class DictionaryExtensions
     {
         /*----------Functions----------*/
         //PUBLIC

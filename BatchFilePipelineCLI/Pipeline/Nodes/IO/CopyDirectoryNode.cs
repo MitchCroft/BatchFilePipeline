@@ -1,20 +1,15 @@
 ﻿using BatchFilePipelineCLI.Logging;
-using BatchFilePipelineCLI.Pipeline.Nodes;
-using BatchFilePipelineCLI.Pipeline.Nodes.IO;
 using BatchFilePipelineCLI.Pipeline.Runners;
-using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
-using BatchFilePipelineCLI.Utility.ExecutionState;
-using Renci.SshNet;
+using BatchFilePipelineCLI.Utility;
 
-namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
+namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
 {
     /// <summary>
-    /// Upload all files contained within a directory to a remote SSH server from a local path
+    /// Copy a directory from one location to another
     /// </summary>
-    [PipelineNode(nameof(UploadSSHDirectoryNode), NodeUsage.Process)]
-    internal sealed class UploadSSHDirectoryNode : SSHBaseNode, INode
+    [Node]
+    public sealed class CopyDirectoryNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE
@@ -48,12 +43,6 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             "Flags if files are allowed to be overwriten during the copy operation",
             false
         );
-        private readonly Property _failOnDuplicateProperty = Property.Create
-        (
-            "FailOnDuplicate",
-            "Flags if, when overwrite is not allowed, should the operation return a failure if a duplicate is found",
-            true
-        );
 
         /// <summary>
         /// We can output the name of the directory when we are done
@@ -72,7 +61,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// Retrieve the collection of input properties that can be defined for processing the Node
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        public IList<Property> GetInputProperties() => CombineInputs(_targetDirProperty, _destinationPathProperty, _renameDirectoryProperty, _allowOverwriteProperty, _failOnDuplicateProperty);
+        public IList<Property> GetInputProperties() => [_targetDirProperty, _destinationPathProperty, _renameDirectoryProperty, _allowOverwriteProperty];
 
         /// <summary>
         /// Retrieve the collection of output properties that will be made available for use in later stages
@@ -84,18 +73,14 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
         /// <param name="context">The context for the currently executing pipline node</param>
-        /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
-        public async ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineExecutionContext context,
-                                                                       CancellationToken cancellationToken)
+        public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineContext context)
         {
-            // Retrieve the properties that will be processed
-            ConnectionInfo connectionInfo = GetConnectionInfo(context);
+            // Get the values that we need
             string targetDir = context.GetInput<string>(_targetDirProperty);
             string destinationPath = context.GetInput<string>(_destinationPathProperty);
             string renameDirectory = context.GetInput<string>(_renameDirectoryProperty);
             bool allowOverwrite = context.GetInput<bool>(_allowOverwriteProperty);
-            bool failOnDuplicate = context.GetInput<bool>(_failOnDuplicateProperty);
 
             // Get the root directory that is to be copied
             var rootInfo = new DirectoryInfo(targetDir);
@@ -105,15 +90,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             }
 
             // Get the root of the destination path
-            string destinationRoot = Path.Combine(destinationPath, string.IsNullOrWhiteSpace(renameDirectory) == true ? rootInfo.Name : renameDirectory)
-                .Replace('\\', '/');
-
-            // Try to make the SSH connection
-            using var sftp = new SftpClient(connectionInfo);
-            sftp.Connect();
-
-            // We need to ensure that the system doesn't sleep during file transfers
-            using var marker = ExecutionStateHandler.Push();
+            string destinationRoot = IOUtility.Combine(destinationPath, string.IsNullOrWhiteSpace(renameDirectory) == true ? rootInfo.Name : renameDirectory);
 
             // We're going to need to process all of the files and sub-directories that are contained in the directory
             Queue<(DirectoryInfo source, string destination)> toCopy = new();
@@ -123,62 +100,32 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
             while (toCopy.TryDequeue(out var current))
             {
                 // Make sure that the destination location exists
-                Logger.Log($"[{nameof(UploadSSHDirectoryNode)}] Creating directory '{current.destination}'");
-                await sftp.CreateRemoteDirectoryAsync(current.destination, cancellationToken);
-                if (cancellationToken.IsCancellationRequested == true)
-                {
-                    return new ExecutionResult();
-                }
+                Logger.Log($"[{nameof(CopyDirectoryNode)}] Creating directory '{current.destination}'");
+                Directory.CreateDirectory(current.destination);
 
                 // Copy all of the files in the source
                 foreach (var file in current.source.EnumerateFiles())
                 {
-                    // Work out where we're sending the file
-                    string finalPath = Path.Combine(current.destination, file.Name).Replace('\\', '/');
-
-                    // Check to see if the file already exists and if we can overwrite it
-                    if (allowOverwrite == false &&
-                        await sftp.ExistsAsync(finalPath, cancellationToken) == true)
-                    {
-                        if (failOnDuplicate == true)
-                        {
-                            return new ExecutionResult(409, $"[{nameof(UploadSSHDirectoryNode)}] Unable to upload file '{file.FullName}' to '{finalPath}' as a file already exists");
-                        }
-                        Logger.Log($"[{nameof(UploadSSHDirectoryNode)}] Skipping file '{file.FullName}' as it already exists on the server at '{finalPath}'");
-                        continue;
-                    }
-
-                    // Process the file upload
-                    Logger.Log($"[{nameof(UploadSSHDirectoryNode)}] Uploading file '{file.FullName}' to '{finalPath}'");
-                    using (var fStream = File.OpenRead(file.FullName))
-                    {
-                        await sftp.UploadFileAsync(fStream, finalPath, cancellationToken);
-                    }
-                    if (cancellationToken.IsCancellationRequested == true)
-                    {
-                        return new ExecutionResult();
-                    }
-                    Logger.Log($"[{nameof(UploadSSHDirectoryNode)}] Uploaded file '{file.FullName}' to '{finalPath}'");
+                    Logger.Log($"[{nameof(CopyDirectoryNode)}] Copying file '{file.FullName}'");
+                    string finalPath = IOUtility.Combine(current.destination, file.Name);
+                    File.Copy(file.FullName, finalPath, allowOverwrite);
                 }
 
                 // Queue up the contained sub-directories
                 foreach (var subDir in current.source.EnumerateDirectories())
                 {
-                    toCopy.Enqueue((subDir, Path.Combine(current.destination, subDir.Name).Replace('\\', '/')));
+                    toCopy.Enqueue((subDir, IOUtility.Combine(current.destination, subDir.Name)));
                 }
             }
 
-            // We're done copying the directory
-            Logger.Success($"[{nameof(UploadSSHDirectoryNode)}] Finished uploading '{rootInfo.FullName}' to '{destinationRoot}'");
-
             // We have our final directory copied
-            return new ExecutionResult
+            return ValueTask.FromResult(new ExecutionResult
             (
                 new Dictionary<string, object?>
                 {
                     { _outputProperty.Name, destinationRoot }
                 }
-            );
+            ));
         }
     }
 }

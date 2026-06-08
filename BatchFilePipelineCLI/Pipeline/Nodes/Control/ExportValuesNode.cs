@@ -8,7 +8,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control
     /// Special case node that can be used to define values that need to be passed up an execution level for processing in
     /// later sections
     /// </summary>
-    [PipelineNode]
+    [Node]
     public sealed class ExportValuesNode : INode
     {
         /*----------Functions----------*/

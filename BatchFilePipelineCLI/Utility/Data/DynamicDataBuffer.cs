@@ -22,7 +22,7 @@
         /// <summary>
         /// Callback function that can be used to cleanup elements within the collection on disposal
         /// </summary>
-        private readonly Action<IReadOnlyList<T>>? _onCleanup;
+        private readonly Action<List<T>>? _onCleanup;
 
         /*----------Functions----------*/
         //PUBLIC
@@ -33,7 +33,7 @@
         /// <param name="startingSize">The number of buffers that should be created initially</param>
         /// <param name="capacity">The starting capacity that should be used for the created buffers</param>
         /// <param name="onCleanup">[Optional] Callback function that can be used to cleanup elements within the collection on disposal</param>
-        public DynamicDataBuffer(int startingSize, int capacity, Action<IReadOnlyList<T>>? onCleanup = null)
+        public DynamicDataBuffer(int startingSize, int capacity, Action<List<T>>? onCleanup = null)
         {
             _buffers = new Stack<List<T>>(startingSize);
             _startingCapacity = startingSize;

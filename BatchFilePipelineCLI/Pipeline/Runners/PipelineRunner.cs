@@ -2,8 +2,8 @@
 using BatchFilePipelineCLI.Pipeline.Builders;
 using BatchFilePipelineCLI.Pipeline.Data;
 using BatchFilePipelineCLI.Pipeline.Description;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 using BatchFilePipelineCLI.Pipeline.Nodes.Control;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.PropertyResolver;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -466,6 +466,15 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
                 resolved = PipelineId.Empty;
                 return false;
             }
+
+            // If the resolved path is empty, then we can just use the active running path
+            if (string.IsNullOrWhiteSpace(pathValue?.ToString()) == true)
+            {
+                resolved = currentlyRunning.Id;
+                return true;
+            }
+
+            // Otherwise, we can try and construct the asset link
             resolved = new PipelineId(pathValue?.ToString() ?? string.Empty, currentlyRunning.Id.Path);
             return true;
         }

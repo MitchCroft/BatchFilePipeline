@@ -58,5 +58,31 @@ namespace BatchFilePipelineCLI.Utility
         /// <returns>Returns the final, full path that can be used for processing</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetFullPath(string path, string root) => CleanFilePath(Path.GetFullPath(path, root));
+
+        /// <summary>
+        /// Retrieve the extension for a file in a given file path
+        /// </summary>
+        /// <param name="path">The file path that is to be processed</param>
+        /// <returns>Returns the extension for the specified path</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string GetExtension(string path) => CleanFilePath(Path.GetExtension(path));
+
+        /// <summary>
+        /// Retrieve the name of the file in the given file path
+        /// </summary>
+        /// <param name="path">The file path that is to be processed</param>
+        /// <param name="includeExtension">Flags if the extension of the file should be included in the return result</param>
+        /// <returns>Returns the name of the file in the file path</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string GetFileName(string path, bool includeExtension) => CleanFilePath(includeExtension ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path));
+
+        /// <summary>
+        /// Find the relative path of the file path from the specified root
+        /// </summary>
+        /// <param name="root">The root that the relative path will be determined from</param>
+        /// <param name="path">The destination path of the file being processed</param>
+        /// <returns>Returns the relative path or path if there is no common root</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string GetRelativePath(string root, string path) => CleanFilePath(Path.GetRelativePath(root, path));
     }
 }

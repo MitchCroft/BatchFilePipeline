@@ -3,7 +3,7 @@
     /// <summary>
     /// Static class that can be used to log elements to the output for processing
     /// </summary>
-    internal static class Logger
+    public static class Logger
     {
         /*----------Variables----------*/
         //PRIVATE

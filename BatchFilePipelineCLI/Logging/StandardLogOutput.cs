@@ -1,18 +1,12 @@
-﻿namespace BatchFilePipelineCLI.Logging
+﻿using BatchFilePipelineCLI.Utility;
+
+namespace BatchFilePipelineCLI.Logging
 {
     /// <summary>
     /// Provide logging functionality through the standard output targets of the program
     /// </summary>
-    internal sealed class StandardLogOutput : ILogOutput
+    public sealed class StandardLogOutput : ILogOutput
     {
-        /*----------Variables----------*/
-        //PRIVATE
-
-        /// <summary>
-        /// Use an instance of a generic object as a thread lock for controlling access to standard output
-        /// </summary>
-        private readonly object _lock = new object();
-
         /*----------Functions----------*/
         //PUBLIC
 
@@ -23,7 +17,7 @@
         /// <param name="type">The type of log that this is</param>
         public void LogMessage(object message, LogType type)
         {
-            lock (_lock)
+            ConsoleUtility.Process(() =>
             {
                 try
                 {
@@ -49,7 +43,7 @@
                 {
                     Console.ResetColor();
                 }
-            }
+            });
         }
     }
 }

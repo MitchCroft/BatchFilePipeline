@@ -1,7 +1,7 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Data;
 using BatchFilePipelineCLI.Pipeline.Description;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 using BatchFilePipelineCLI.Utility.Extensions;
 using System.Diagnostics.CodeAnalysis;
 

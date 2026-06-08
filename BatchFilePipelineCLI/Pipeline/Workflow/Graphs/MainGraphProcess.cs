@@ -1,12 +1,12 @@
 ﻿using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using BatchFilePipelineCLI.Utility.Extensions;
 using System.Collections;
 using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {

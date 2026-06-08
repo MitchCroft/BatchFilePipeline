@@ -3,7 +3,7 @@
     /// <summary>
     /// Handle the output of log information to a file on disc for later study
     /// </summary>
-    internal sealed class FileLogOutput : ILogOutput
+    public sealed class FileLogOutput : ILogOutput
     {
         /*----------Variables----------*/
         //PRIVATE
