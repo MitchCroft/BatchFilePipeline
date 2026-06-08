@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -11,7 +13,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Defines a node that can be used to copy a file from one remote location to another
     /// </summary>
     [PipelineNode(nameof(CopyFileSSHNode), NodeUsage.Process)]
-    internal sealed class CopyFileSSHNode : SSHBaseNode, IPipelineNode
+    internal sealed class CopyFileSSHNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Define a node that can be used to move a file from one location to another
     /// </summary>
     [PipelineNode(nameof(MoveFileNode), NodeUsage.All)]
-    internal sealed class MoveFileNode : IPipelineNode
+    internal sealed class MoveFileNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

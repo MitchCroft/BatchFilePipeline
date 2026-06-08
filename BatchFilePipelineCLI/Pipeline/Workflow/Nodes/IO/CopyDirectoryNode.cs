@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Copy a directory from one location to another
     /// </summary>
     [PipelineNode(nameof(CopyDirectoryNode), NodeUsage.All)]
-    internal sealed class CopyDirectoryNode : IPipelineNode
+    internal sealed class CopyDirectoryNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

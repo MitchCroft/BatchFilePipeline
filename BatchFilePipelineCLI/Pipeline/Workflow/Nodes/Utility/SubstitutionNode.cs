@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Newtonsoft.Json;
 using System.Text;
@@ -9,7 +11,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
     /// Allow for the cleansing of a string to substitute a collection of characters in a string for others
     /// </summary>
     [PipelineNode(nameof(SubstitutionNode), NodeUsage.All)]
-    internal sealed class SubstitutionNode : IPipelineNode
+    internal sealed class SubstitutionNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

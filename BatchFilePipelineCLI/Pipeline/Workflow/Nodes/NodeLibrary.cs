@@ -1,13 +1,14 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
 {
     /// <summary>
     /// Handle the creation of a workflow based on the supplied description
     /// </summary>
-    internal sealed class NodeLibrary
+    public sealed class NodeLibrary
     {
         /*----------Variables----------*/
         //PRIVATE
@@ -15,10 +16,10 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         /// <summary>
         /// The type of the shared interface for all pipeline nodes that are to be processed
         /// </summary>
-        private readonly Type _targetNodeType = typeof(IPipelineNode);
+        private readonly Type _targetNodeType = typeof(INode);
 
         /// <summary>
-        /// Cache the <see cref="IPipelineNode"/> types that can be used based on the name of the node
+        /// Cache the <see cref="INode"/> types that can be used based on the name of the node
         /// </summary>
         private readonly Dictionary<string/*TypeId*/, Type> _nodeLookup = new();
 
@@ -30,13 +31,13 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         /// <summary>
         /// Store the instances of the shared pipeline nodes that can be used for processing
         /// </summary>
-        private readonly Dictionary<string/*TypeId*/, IPipelineNode> _sharedNodes = new();
+        private readonly Dictionary<string/*TypeId*/, INode> _sharedNodes = new();
 
         /*----------Functions----------*/
         //PUBLIC
 
         /// <summary>
-        /// Try to initialise the Node Library based on the any <see cref="IPipelineNode"/> types in the loaded assemblies
+        /// Try to initialise the Node Library based on the any <see cref="INode"/> types in the loaded assemblies
         /// </summary>
         /// <returns>Return try if the library could be loaded properly from the available types</returns>
         public bool TryLoadFromAppDomain()
@@ -47,7 +48,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         }
 
         /// <summary>
-        /// Try to initialise the Node Library based on the supplied <see cref="IPipelineNode"/> types
+        /// Try to initialise the Node Library based on the supplied <see cref="INode"/> types
         /// </summary>
         /// <param name="nodeTypes">A collection of the pipeline node types that can be processed</param>
         /// <returns>Return try if the library could be loaded properly from the available types</returns>
@@ -65,7 +66,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
                 // Check that the type is a valid target type
                 if (_targetNodeType.IsAssignableFrom(type) == false)
                 {
-                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. Doesn't implement {nameof(IPipelineNode)}");
+                    Logger.Error($"Unable to process the type '{type}' as a Pipeline Node. Doesn't implement {nameof(INode)}");
                     success = false;
                     continue;
                 }
@@ -133,7 +134,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
         /// <param name="typeId">The unique ID of the Node that is to be retrieved</param>
         /// <param name="node">Passes out the instance of the node to be used if a matching one of the node could be found</param>
         /// <returns>Returns true if an instance of the Node of the specified type could be found, false if no Node with that ID is contained</returns>
-        public bool TryGetInstanceOfNode(string typeId, [NotNullWhen(true)] out IPipelineNode? node)
+        public bool TryGetInstanceOfNode(string typeId, [NotNullWhen(true)] out INode? node)
         {
             // Check if we have a node for the type
             if (TryResolveValidNodeTypeId(typeId, out var validTypeId) == false ||
@@ -152,7 +153,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes
             }
 
             // We need to create a new instance of the node for use
-            node = (IPipelineNode)Activator.CreateInstance(nodeType)!;
+            node = (INode)Activator.CreateInstance(nodeType)!;
 
             // If this is shared, we can store it for later use
             if (isShared == true)

@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEdit.Data;
@@ -12,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
     /// Estimate the successful conversion of an SRT subtitle file based on a dictionary of words that can be comparsed against
     /// </summary>
     [PipelineNode(nameof(EstimateSRTConversionSuccessNode), NodeUsage.Process)]
-    internal sealed class EstimateSRTConversionSuccessNode : IPipelineNode
+    internal sealed class EstimateSRTConversionSuccessNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

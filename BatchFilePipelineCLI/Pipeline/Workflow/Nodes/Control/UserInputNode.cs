@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
@@ -10,7 +12,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// Allow for the user to enter a string value at runtime for processing
     /// </summary>
     [PipelineNode(nameof(UserInputNode), ~NodeUsage.Process)]
-    internal sealed class UserInputNode : IPipelineNode
+    internal sealed class UserInputNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

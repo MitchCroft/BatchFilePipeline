@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Comparison;
 using System.Globalization;
 
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// Handle the comparison of two values to determine a branching path that should be used
     /// </summary>
     [PipelineNode(nameof(ComparisonNode), NodeUsage.All)]
-    internal sealed class ComparisonNode : IPipelineNode
+    internal sealed class ComparisonNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

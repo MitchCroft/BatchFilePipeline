@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.Data;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -14,7 +16,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
     /// Handle the process of transcoding a video file with a specific preset
     /// </summary>
     [PipelineNode(nameof(TranscodeVideoNode), NodeUsage.Process)]
-    internal sealed class TranscodeVideoNode : IPipelineNode
+    internal sealed class TranscodeVideoNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
@@ -6,7 +8,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// A Node that can be used to retrieve the file name from a specified path
     /// </summary>
     [PipelineNode(nameof(GetFileNameNode), NodeUsage.All)]
-    internal sealed class GetFileNameNode : IPipelineNode
+    internal sealed class GetFileNameNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

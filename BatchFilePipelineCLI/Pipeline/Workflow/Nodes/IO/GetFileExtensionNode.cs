@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Define a Node that can be used to get the file extension from a specified file path
     /// </summary>
     [PipelineNode(nameof(GetFileExtensionNode), NodeUsage.All)]
-    internal sealed class GetFileExtensionNode : IPipelineNode
+    internal sealed class GetFileExtensionNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

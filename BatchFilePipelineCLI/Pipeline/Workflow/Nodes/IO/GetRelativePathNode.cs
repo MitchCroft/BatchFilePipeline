@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Define a node that can be used to calculate the relative path to another
     /// </summary>
     [PipelineNode(nameof(GetRelativePathNode), NodeUsage.All)]
-    internal sealed class GetRelativePathNode : IPipelineNode
+    internal sealed class GetRelativePathNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

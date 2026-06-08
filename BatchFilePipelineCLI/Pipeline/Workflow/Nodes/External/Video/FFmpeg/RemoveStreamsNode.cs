@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -11,7 +13,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
     /// Manage a process that allows for the stripping of specific streams from a file
     /// </summary>
     [PipelineNode(nameof(RemoveStreamsNode), NodeUsage.Process)]
-    internal sealed class RemoveStreamsNode : IPipelineNode
+    internal sealed class RemoveStreamsNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

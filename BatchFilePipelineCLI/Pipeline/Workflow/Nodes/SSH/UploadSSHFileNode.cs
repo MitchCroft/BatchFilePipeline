@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -11,7 +13,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Upload a file to a remote SSH server from a local path
     /// </summary>
     [PipelineNode(nameof(UploadSSHFileNode), NodeUsage.Process)]
-    internal sealed class UploadSSHFileNode : SSHBaseNode, IPipelineNode
+    internal sealed class UploadSSHFileNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

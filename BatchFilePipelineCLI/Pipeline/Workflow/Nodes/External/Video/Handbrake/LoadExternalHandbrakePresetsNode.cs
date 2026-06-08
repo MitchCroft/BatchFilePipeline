@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.Data;
 using BatchFilePipelineCLI.PropertyResolver;
 using Newtonsoft.Json;
@@ -9,7 +11,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
     /// Handle the loading of external handbrake presets from an export file that can be used while processing
     /// </summary>
     [PipelineNode(nameof(LoadExternalHandbrakePresetsNode), NodeUsage.All)]
-    internal sealed class LoadExternalHandbrakePresetsNode : IPipelineNode
+    internal sealed class LoadExternalHandbrakePresetsNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

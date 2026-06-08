@@ -7,7 +7,7 @@ namespace BatchFilePipelineCLI.Pipeline.Description
     /// <summary>
     /// Handle the generic mapping of properties that can be used for processing a workflow pipeline
     /// </summary>
-    public sealed class KeyValueSection : Dictionary<string, string?>, IXmlSerializable
+    public sealed class KeyValueSection : Dictionary<string, string>, IXmlSerializable
     {
         /*----------Functions----------*/
         //INTERFACE

@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Handle the removal of a directory that is no longer needed during a workflow
     /// </summary>
     [PipelineNode(nameof(DeleteDirectoryNode), NodeUsage.All)]
-    internal sealed class DeleteDirectoryNode : IPipelineNode
+    internal sealed class DeleteDirectoryNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

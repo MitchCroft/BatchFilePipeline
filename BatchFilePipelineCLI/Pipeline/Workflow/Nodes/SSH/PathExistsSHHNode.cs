@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Renci.SshNet;
 using System.Globalization;
@@ -9,7 +11,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Define a Node that can be used to check if a path exists at a remote location
     /// </summary>
     [PipelineNode(nameof(PathExistsSHHNode), NodeUsage.All)]
-    internal sealed class PathExistsSHHNode : SSHBaseNode, IPipelineNode
+    internal sealed class PathExistsSHHNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

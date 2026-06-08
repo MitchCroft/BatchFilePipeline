@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Define a Node that can be used to combine multiple path segments into a single path
     /// </summary>
     [PipelineNode(nameof(CombinePathNode), NodeUsage.All)]
-    internal sealed class CombinePathNode : IPipelineNode
+    internal sealed class CombinePathNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

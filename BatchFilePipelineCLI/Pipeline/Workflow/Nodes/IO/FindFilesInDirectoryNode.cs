@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
@@ -7,7 +9,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Define a node that can be used to search through directories for files that should be returned for processing
     /// </summary>
     [PipelineNode(nameof(FindFilesInDirectoryNode), NodeUsage.Identification)]
-    internal sealed class FindFilesInDirectoryNode : IPipelineNode
+    internal sealed class FindFilesInDirectoryNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

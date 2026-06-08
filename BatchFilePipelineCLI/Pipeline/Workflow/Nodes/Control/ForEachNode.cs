@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using System.Collections;
@@ -10,7 +12,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// with the current item being made available as a runtime variable for the sub-graph to use
     /// </summary>
     [PipelineNode(nameof(ForEachNode), NodeUsage.Process, IsShared = false)]
-    internal sealed class ForEachNode : IPipelineNode
+    internal sealed class ForEachNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

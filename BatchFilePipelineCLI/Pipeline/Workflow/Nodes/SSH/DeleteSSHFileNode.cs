@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.ExecutionState;
@@ -10,7 +12,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Delete a file from a remote SSH server
     /// </summary>
     [PipelineNode(nameof(DeleteSSHFileNode), NodeUsage.Process)]
-    internal sealed class DeleteSSHFileNode : SSHBaseNode, IPipelineNode
+    internal sealed class DeleteSSHFileNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

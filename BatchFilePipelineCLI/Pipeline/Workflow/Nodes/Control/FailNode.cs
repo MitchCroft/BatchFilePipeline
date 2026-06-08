@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
 {
@@ -6,7 +8,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// Raise an intentional failure in the process for the given entry
     /// </summary>
     [PipelineNode(nameof(FailNode), NodeUsage.All)]
-    internal sealed class FailNode : IPipelineNode
+    internal sealed class FailNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

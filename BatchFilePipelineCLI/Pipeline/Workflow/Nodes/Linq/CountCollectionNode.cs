@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using System.Collections;
 
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Linq
     /// Count all of the elements that are contained within a collection for processing
     /// </summary>
     [PipelineNode(nameof(CountCollectionNode), NodeUsage.All)]
-    internal sealed class CountCollectionNode : IPipelineNode
+    internal sealed class CountCollectionNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

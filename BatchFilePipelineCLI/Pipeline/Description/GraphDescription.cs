@@ -5,7 +5,7 @@ namespace BatchFilePipelineCLI.Pipeline.Description
     /// <summary>
     /// Information about a graph of nodes that can be processed during a workflow
     /// </summary>
-    public sealed class GraphDescription : IGraphDescription
+    public sealed class GraphDescription : IWorkflowElement
     {
         /*----------Properties----------*/
         //PUBLIC
@@ -45,5 +45,13 @@ namespace BatchFilePipelineCLI.Pipeline.Description
         /// </summary>
         [XmlElement("Node")]
         public NodeDescription[] Nodes { get; set; } = Array.Empty<NodeDescription>();
+
+        /*----------Functions----------*/
+        //PUBLIC
+
+        /// <summary>
+        /// Format the name and ID of this graph for output display
+        /// </summary>
+        public override string ToString() => $"{Name} ({Id})";
     }
 }

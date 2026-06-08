@@ -1,4 +1,4 @@
-﻿namespace BatchFilePipelineCLI.Pipeline.Workflow
+﻿namespace BatchFilePipelineCLI.Pipeline.Runners
 {
     /// <summary>
     /// Define the result of a process being run and the output of the process
@@ -24,7 +24,7 @@
         /// <summary>
         /// The collection of output results from the processing when successful
         /// </summary>
-        public readonly Dictionary<string, object?>? Results;
+        public readonly IReadOnlyDictionary<string, object?>? Results;
 
         /// <summary>
         /// For Nodes with split paths, the name of the connection to be run next
@@ -88,9 +88,7 @@
         /// <summary>
         /// Retrieve a string representation of the result
         /// </summary>
-        public override string ToString()
-        {
-            return IsError ? $"[Failure: {ResultCode}] {DetailMessage}" : $"[Success]{(string.IsNullOrWhiteSpace(DetailMessage) == true ? string.Empty : $" {DetailMessage}")}";
-        }
+        public override string ToString() =>
+            IsError ? $"[Failure: {ResultCode}] {DetailMessage}" : $"[Success]{(string.IsNullOrWhiteSpace(DetailMessage) == true ? string.Empty : $" {DetailMessage}")}";
     }
 }

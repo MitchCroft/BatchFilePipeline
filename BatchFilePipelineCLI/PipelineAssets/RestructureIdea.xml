@@ -7,7 +7,7 @@
 	</Environment>
 
 	<!-- We can define a number of functions that can operate as independent collections -->
-	<Workflow EntryGraph="MainGraph">
+	<Workflow EntryGraphId="MainGraph">
 		<!-- If the workflow is going to be a starting point, it needs to nominate a starting graph to load -->
 		<Graph Name="Main Graph" Id="MainGraph" EntryNodeId="MainGraph_00">
 			<!-- We can use a Node to get a resulting combined path -->

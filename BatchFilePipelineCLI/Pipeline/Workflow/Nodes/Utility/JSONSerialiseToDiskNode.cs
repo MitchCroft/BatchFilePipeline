@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Newtonsoft.Json;
 
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
     /// Save a supplied value of any type to disk as a JSON output result
     /// </summary>
     [PipelineNode(nameof(JSONSerialiseToDiskNode), NodeUsage.All)]
-    internal sealed class JSONSerialiseToDiskNode : IPipelineNode
+    internal sealed class JSONSerialiseToDiskNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

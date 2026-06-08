@@ -6,6 +6,7 @@ using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Utility.ExecutionState;
 using BatchFilePipelineCLI.Utility.Extensions;
 using System.Collections;
+using BatchFilePipelineCLI.Pipeline.Runners;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
 {

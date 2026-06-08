@@ -5,7 +5,7 @@ namespace BatchFilePipelineCLI.Pipeline.Description
     /// <summary>
     /// Describe a Node that can be used within the processing workflow and how it should operate
     /// </summary>
-    public sealed class NodeDescription
+    public sealed class NodeDescription : IWorkflowElement
     {
         /*----------Properties----------*/
         //PUBLIC

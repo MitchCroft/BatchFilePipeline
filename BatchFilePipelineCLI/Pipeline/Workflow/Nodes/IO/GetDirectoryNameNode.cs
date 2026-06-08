@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
 {
@@ -6,7 +8,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.IO
     /// Node that can be used to get the name of a directory from a specified path
     /// </summary>
     [PipelineNode(nameof(GetDirectoryNameNode), NodeUsage.All)]
-    internal sealed class GetDirectoryNameNode : IPipelineNode
+    internal sealed class GetDirectoryNameNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

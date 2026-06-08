@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
@@ -12,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe
     /// Provide a base type for handling the functionality of programs wrapped in a Node interface
     /// </summary>
     [PipelineNode(nameof(GetVideoDetailsNode), NodeUsage.Process)]
-    internal sealed class GetVideoDetailsNode : IPipelineNode
+    internal sealed class GetVideoDetailsNode : INode
     {
         /*----------Variables----------*/
         //PROTECTED

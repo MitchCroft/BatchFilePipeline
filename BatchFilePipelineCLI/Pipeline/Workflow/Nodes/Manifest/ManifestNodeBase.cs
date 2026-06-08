@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Newtonsoft.Json;
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Manifest
     /// <summary>
     /// The base definition of a Node that can be used to interact with a manifest file that is written to disk for processing
     /// </summary>
-    internal abstract class ManifestNodeBase : IPipelineNode
+    internal abstract class ManifestNodeBase : INode
     {
         /*----------Variables----------*/
         //PROTECTED

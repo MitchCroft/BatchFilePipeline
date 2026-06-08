@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -12,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Control
     /// Allow for a user to select a value for branching path logic
     /// </summary>
     [PipelineNode(nameof(UserBranchNode), ~NodeUsage.Process)]
-    internal sealed class UserBranchNode : IPipelineNode
+    internal sealed class UserBranchNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

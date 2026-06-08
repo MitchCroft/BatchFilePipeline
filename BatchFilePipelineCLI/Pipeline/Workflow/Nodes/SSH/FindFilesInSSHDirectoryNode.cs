@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using Renci.SshNet;
@@ -11,7 +13,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Define a Node that allows for the identification of files within a directory on a remote SSH server
     /// </summary>
     [PipelineNode(nameof(FindFilesInSSHDirectoryNode), NodeUsage.MainGraph)]
-    internal sealed class FindFilesInSSHDirectoryNode : SSHBaseNode, IPipelineNode
+    internal sealed class FindFilesInSSHDirectoryNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

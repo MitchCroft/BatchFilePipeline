@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake.Data;
@@ -10,7 +12,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Handbrake
     /// Find a <see cref="HandbrakePresetOption"/> that would be the best fit for a provided video file
     /// </summary>
     [PipelineNode(nameof(FindHandbrakePresetForVideoNode), NodeUsage.Process)]
-    internal sealed class FindHandbrakePresetForVideoNode : IPipelineNode
+    internal sealed class FindHandbrakePresetForVideoNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

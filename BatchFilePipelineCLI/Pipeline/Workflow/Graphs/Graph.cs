@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Pipeline.Description;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility;
 using BatchFilePipelineCLI.PropertyResolver;
@@ -29,7 +31,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <summary>
         /// Store the graph nodes that are needed for processing the functional operation
         /// </summary>
-        private readonly IDictionary<string/*NodeID*/, IPipelineNode> _graph;
+        private readonly IDictionary<string/*NodeID*/, INode> _graph;
 
         /// <summary>
         /// Store the descriptions of the different Nodes so we know how to link up information for use
@@ -51,7 +53,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         /// <param name="graph">The collection of keyed nodes that can be evaluated</param>
         /// <param name="descriptions">The collection of keyed descriptions that can be used for parsing</param>
         public Graph(NodeDescription? head,
-                     IDictionary<string/*NodeID*/, IPipelineNode> graph,
+                     IDictionary<string/*NodeID*/, INode> graph,
                      IDictionary<string/*NodeID*/, NodeDescription> descriptions)
         {
             _head = head;

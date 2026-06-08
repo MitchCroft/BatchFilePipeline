@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
@@ -12,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
     /// Handle the extraction of subtitles from a collection of streams
     /// </summary>
     [PipelineNode(nameof(ExtractSubtitlesNode), NodeUsage.Process)]
-    internal sealed class ExtractSubtitlesNode : IPipelineNode
+    internal sealed class ExtractSubtitlesNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

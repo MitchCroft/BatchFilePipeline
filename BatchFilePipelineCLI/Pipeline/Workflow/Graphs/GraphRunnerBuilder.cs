@@ -1,5 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Description;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.Utility.Extensions;
 using System.Diagnostics.CodeAnalysis;
@@ -64,7 +65,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Graphs
         {
             // We need to parse the descriptions to find the elements that will be used to create the graph
             NodeDescription? head = null;
-            Dictionary<string/*NodeID*/, IPipelineNode> graphNodes = new();
+            Dictionary<string/*NodeID*/, INode> graphNodes = new();
             Dictionary<string/*NodeID*/, NodeDescription> nodeDescriptions = new();
 
             // Loop through all of the supplied ndoes and see if we can use them

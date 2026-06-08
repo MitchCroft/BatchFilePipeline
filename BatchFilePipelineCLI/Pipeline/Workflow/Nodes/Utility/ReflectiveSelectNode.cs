@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 
@@ -8,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Utility
     /// Provide a utility node that can be used to select a sub-value of another object based on reflection
     /// </summary>
     [PipelineNode(nameof(ReflectiveSelectNode), NodeUsage.All)]
-    internal sealed class ReflectiveSelectNode : IPipelineNode
+    internal sealed class ReflectiveSelectNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

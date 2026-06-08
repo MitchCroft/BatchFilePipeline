@@ -1,4 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -12,7 +14,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Email
     /// Provide a Node that can be used to interface with an external mail server and send a message
     /// </summary>
     [PipelineNode(nameof(SendEmailNode), NodeUsage.Support)]
-    internal sealed class SendEmailNode : IPipelineNode
+    internal sealed class SendEmailNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

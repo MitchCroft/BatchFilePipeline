@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Comparison;
@@ -11,7 +13,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Linq
     /// Provide a Node that can be used to filter a collection of values based on contained properties
     /// </summary>
     [PipelineNode(nameof(FilterCollectionNode), NodeUsage.All)]
-    internal sealed class FilterCollectionNode : IPipelineNode
+    internal sealed class FilterCollectionNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

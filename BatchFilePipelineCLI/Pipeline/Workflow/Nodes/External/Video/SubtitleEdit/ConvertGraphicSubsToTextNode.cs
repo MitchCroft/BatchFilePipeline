@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.Utility;
@@ -13,7 +15,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.SubtitleEd
     /// Allow for the conversion of graphical based subtitles into text based subtitles
     /// </summary>
     [PipelineNode(nameof(ConvertGraphicSubsToTextNode), NodeUsage.Process)]
-    internal sealed class ConvertGraphicSubsToTextNode : IPipelineNode
+    internal sealed class ConvertGraphicSubsToTextNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

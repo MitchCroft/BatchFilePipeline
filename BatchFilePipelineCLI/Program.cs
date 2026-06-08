@@ -3,12 +3,11 @@
 using DotNetEnv;
 
 using BatchFilePipelineCLI.Logging;
-using BatchFilePipelineCLI.Pipeline.Description;
 using BatchFilePipelineCLI.Utility.Preserve;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
-using BatchFilePipelineCLI.Pipeline.Workflow;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
+using BatchFilePipelineCLI.Pipeline.Runners;
 
 namespace BatchFilePipelineCLI
 {
@@ -115,23 +114,12 @@ namespace BatchFilePipelineCLI
         /// <param name="argumentVariables">The collection of argument variables that were passed to the program</param>
         /// <param name="cancellationToken">Cancellation token for the process that is to be respected</param>
         /// <returns>Returns the exit code for the running process</returns>
-        private static async Task<int> ProcessPipelineAsync(string pipelinePath, Dictionary<string, string?> argumentVariables, CancellationToken cancellationToken)
+        private static async Task<int> ProcessPipelineAsync(string pipelinePath,
+                                                            IReadOnlyDictionary<string, string> argumentVariables,
+                                                            CancellationToken cancellationToken)
         {
-            // Try to read the pipeline file that is to be processed for testing
-            if (PipelineDescription.TryOpen(pipelinePath, out var pipelineDescription) == false)
-            {
-                Logger.Error($"Failed to open the pipeline file '{pipelineDescription}' for processing");
-                return -1;
-            }
-
             // Read in the environment variables that can be used for executing the workflow
             var environmentVariables = LoadEnvironmentVariables();
-
-            // Combine all of the environment variable sources together for the final collection that will be used
-            var pipelineEnvironmentVariables = environmentVariables
-                .Concat(pipelineDescription.Environment)
-                .ToDictionary(x => x.Key, x => x.Value);
-            Logger.Log($"Pipeline Environment Variable Set ({pipelineEnvironmentVariables.Count}):\n\t{string.Join("\n\t", pipelineEnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
             // Try to load the library of nodes that are available for use in the pipeline
             var nodeLibrary = new NodeLibrary();
@@ -140,32 +128,25 @@ namespace BatchFilePipelineCLI
                 Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
                 return -1;
             }
-            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.characteristics.UsageFlags).ThenBy(x => x.characteristics.TypeID).Select(x => $"{x.nodeType.Name}\n\t\tID={x.characteristics.TypeID}\n\t\tUsageFlags={x.characteristics.UsageFlags}\n\t\tIsShared={x.characteristics.IsShared}"))}");
+            Logger.Log($"Loaded node library:\n\t{string.Join("\n\t", nodeLibrary.GetNodeTypes().OrderBy(x => x.nodeType.Name).Select(x => $"{x.nodeType.Name}\n\t\tID={x.nodeType.Name}\n\t\tIsShared={x.characteristics.IsShared}"))}");
 
-            // Create the workflow that will be processed to perform the operations required
-            Workflow workflow = new Workflow();
-            if (workflow.TryLoadFromDescription(pipelineDescription.Workflow, nodeLibrary, pipelineEnvironmentVariables, argumentVariables) == false)
-            {
-                Logger.Error($"Failed to load the workflow graphs for processing. Resolve errors and try again");
-                return -1;
-            }
-
-            // Execute the workflow to process the required elements
-            return await workflow.ExecuteAsync(cancellationToken);
+            // Create the runner that will be used to process the graph operation
+            PipelineRunner runner = new PipelineRunner(nodeLibrary, environmentVariables, argumentVariables);
+            return await runner.ExecuteMainAsync(pipelinePath, Environment.CurrentDirectory, cancellationToken);
         }
 
         /// <summary>
         /// Retrieve all of the environment variables that are defined for operation
         /// </summary>
         /// <returns>Returns the collection of environment variables that are to be processed</returns>
-        private static Dictionary<string, string?> LoadEnvironmentVariables()
+        private static IReadOnlyDictionary<string, string> LoadEnvironmentVariables()
         {
             // Load any external .env file definitions that are needed for processing
             Env.Load();
 
             // Retrieve all of the environment variable values for processing
             var availableValues = Environment.GetEnvironmentVariables();
-            Dictionary<string, string?> environmentValues = new(availableValues.Count);
+            Dictionary<string, string> environmentValues = new(availableValues.Count);
             foreach (DictionaryEntry entry in availableValues)
             {
                 // Skip any null values
@@ -174,7 +155,7 @@ namespace BatchFilePipelineCLI
                 {
                     continue;
                 }
-                environmentValues[key] = entry.Value?.ToString();
+                environmentValues[key] = entry.Value?.ToString() ?? string.Empty;
             }
             return environmentValues;
         }
@@ -184,9 +165,9 @@ namespace BatchFilePipelineCLI
         /// </summary>
         /// <param name="args">The collection of arguments that were supplied to the program for processing</param>
         /// <returns>Returns the collection of variables that will be used for processing</returns>
-        private static Dictionary<string, string?> ParseArgumentVariables(string[] args)
+        private static IReadOnlyDictionary<string, string> ParseArgumentVariables(string[] args)
         {
-            Dictionary<string, string?> argumentVariables = new(args.Length);
+            Dictionary<string, string> argumentVariables = new(args.Length);
             for (int i = 0; i < args.Length; ++i)
             {
                 // The argument should begin with the '-' marker character for use
@@ -217,7 +198,7 @@ namespace BatchFilePipelineCLI
         /// Parse the supplied collection of arguments to see how it should apply to the logging
         /// </summary>
         /// <param name="arguments">The collection of arguments that are available for use</param>
-        private static void ParseLoggerArguments(Dictionary<string, string?> arguments)
+        private static void ParseLoggerArguments(IReadOnlyDictionary<string, string> arguments)
         {
             // Log file output
             if (Resolver.TryResolveEnvironmentVariable(LOG_FILE_OUTPUT, arguments, out string? logFileOutput) == true &&

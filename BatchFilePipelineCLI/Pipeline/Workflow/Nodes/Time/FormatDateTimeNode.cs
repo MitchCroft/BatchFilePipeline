@@ -1,6 +1,6 @@
-﻿using BatchFilePipelineCLI.Pipeline.Workflow;
+﻿using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.PropertyResolver;
 using System.Globalization;
 
@@ -10,7 +10,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.Time
     /// Define a Node that can be used to format a DateTime value into a specified string format
     /// </summary>
     [PipelineNode(nameof(FormatDateTimeNode), NodeUsage.All)]
-    internal sealed class FormatDateTimeNode : IPipelineNode
+    internal sealed class FormatDateTimeNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE

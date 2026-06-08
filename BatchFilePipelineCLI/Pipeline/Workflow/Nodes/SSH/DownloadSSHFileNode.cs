@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.ExecutionState;
@@ -10,7 +12,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.SSH
     /// Download a file from a remote SSH server to a local path
     /// </summary>
     [PipelineNode(nameof(DownloadSSHFileNode), NodeUsage.Process)]
-    internal sealed class DownloadSSHFileNode : SSHBaseNode, IPipelineNode
+    internal sealed class DownloadSSHFileNode : SSHBaseNode, INode
     {
         /*----------Variables----------*/
         //PRIVATE

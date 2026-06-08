@@ -1,4 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Pipeline.Workflow.Graphs;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data;
 using BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFprobe.Data.Streams;
@@ -14,7 +16,7 @@ namespace BatchFilePipelineCLI.Pipeline.Workflow.Nodes.External.Video.FFmpeg
     /// Handle the process of replacing a collection of subtitle streams in a video file
     /// </summary>
     [PipelineNode(nameof(ReplaceSubtitleStreamsNode), NodeUsage.Process)]
-    internal sealed class ReplaceSubtitleStreamsNode : IPipelineNode
+    internal sealed class ReplaceSubtitleStreamsNode : INode
     {
         /*----------Variables----------*/
         //PRIVATE
