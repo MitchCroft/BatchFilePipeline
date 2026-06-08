@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.PropertyResolver;
+﻿using BatchFilePipelineCLI.Pipeline.Data;
+using BatchFilePipelineCLI.PropertyResolver;
 using System.Runtime.CompilerServices;
 
 namespace BatchFilePipelineCLI.Pipeline.Runners
@@ -15,6 +16,11 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
         /// The pipeline runner that is being used to execute the running of the work
         /// </summary>
         public IPipelineRunner Runner { get; init; }
+
+        /// <summary>
+        /// The id for the current pipeline that is being executed
+        /// </summary>
+        public PipelineId CurrentPipeline { get; init; }
 
         /// <summary>
         /// The environment variables that are currently being used for processing the execution of the graph

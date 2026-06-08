@@ -23,6 +23,11 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
         /// </summary>
         private const string DEFAULT_NEXT_NODE_KEY = "Default";
 
+        /// <summary>
+        /// Cache the type that is needed for testing for special case values
+        /// </summary>
+        private static readonly Type PIPELINE_ID_TYPE = typeof(PipelineId);
+
         //PRIVATE
 
         /// <summary>
@@ -87,6 +92,7 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
                 new PipelineContext
                 {
                     Runner = this,
+                    CurrentPipeline = PipelineId.Empty,
                     EnvironmentVariables = _environmentVariables,
                     RuntimeVariables = new Dictionary<string, object?>(),
                     InputVariables = new Dictionary<string, object?>(),
@@ -253,8 +259,23 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
                             // Look for a specified descriptor for the input
                             description.Inputs.TryGetValue(nodeInputs[i].Name, out var inputDescriptor);
 
+                            // We want a specific override for any PipelineId assets that need resolving
+                            object? resolvedInput = null;
+                            if (PIPELINE_ID_TYPE.IsAssignableFrom(nodeInputs[i].Type) == true)
+                            {
+                                if (TryResolveLinkedPipelineId(nodeInputs[i], inputDescriptor, pipeline, localScopeRuntime, out var resolvedPipelineId) == false)
+                                {
+                                    return new ExecutionResult
+                                    (
+                                        422,
+                                        $"[{nameof(PipelineRunner)}] Couldn't resolve the descriptor '{inputDescriptor}' for the property '{nodeInputs[i]}' for the node '{description}' on the graph '{graph}' in the pipeline '{pipeline}'"
+                                    );
+                                }
+                                resolvedInput = resolvedPipelineId;
+                            }
+
                             // Try to resolve the description into a value that can be assigned
-                            if (Resolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], pipeline.EnvironmentVariables, localScopeRuntime, out var resolvedInput) == false)
+                            else if (Resolver.TryResolveDescriptor(inputDescriptor, nodeInputs[i], pipeline.EnvironmentVariables, localScopeRuntime, out resolvedInput) == false)
                             {
                                 return new ExecutionResult
                                 (
@@ -277,6 +298,7 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
                             var nodeContext = new PipelineContext
                             {
                                 Runner = context.Runner,
+                                CurrentPipeline = pipeline.Id,
                                 EnvironmentVariables = pipeline.EnvironmentVariables,
                                 RuntimeVariables = localScopeRuntime,
                                 InputVariables = inputBuffer,
@@ -410,6 +432,42 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
             bool result = PipelineBuilder.TryBuildPipeline(id, _nodeLibrary, _environmentVariables, _argumentVariables, out pipeline);
             _pipelines[id] = pipeline;
             return result;
+        }
+
+        /// <summary>
+        /// Try to resolve a special case of input to a <see cref="PipelineId"/> value
+        /// </summary>
+        /// <param name="input">The original input property definition that is being processed</param>
+        /// <param name="descriptor">The input descriptor from the pipeline that is to be resolved</param>
+        /// <param name="currentlyRunning">The currently running pipeline that can be used as the anchor</param>
+        /// <param name="runtimeVariables">The collection of runtime variables that are available for referenced</param>
+        /// <param name="resolved">Passes out the determined pipeline id for the reference or <see cref="PipelineId.Empty"/> if unable</param>
+        /// <returns>Returns true if the returned pipeline id is valid for use</returns>
+        private bool TryResolveLinkedPipelineId(Property input,
+                                                string? descriptor,
+                                                Data.Pipeline currentlyRunning,
+                                                IReadOnlyDictionary<string, object?> runtimeVariables,
+                                                out PipelineId resolved)
+        {
+            // Create a temporary property that can be used to lookup the required data
+            Property intermediate = Property.CreateDefined
+            (
+                input.Name,
+                input.Tooltip,
+                typeof(string),
+                input.Required,
+                () => input.DefaultValue is PipelineId defaultPipelineId ? defaultPipelineId.Path : string.Empty,
+                input.Example
+            );
+
+            // Try to resolve the defined entry
+            if (Resolver.TryResolveDescriptor(descriptor, intermediate, currentlyRunning.EnvironmentVariables, runtimeVariables, out var pathValue) == false)
+            {
+                resolved = PipelineId.Empty;
+                return false;
+            }
+            resolved = new PipelineId(pathValue?.ToString() ?? string.Empty, currentlyRunning.Id.Path);
+            return true;
         }
     }
 }
