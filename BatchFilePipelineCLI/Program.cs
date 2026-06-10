@@ -4,10 +4,10 @@ using DotNetEnv;
 
 using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Utility.Preserve;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Pipeline.Runners;
+using BatchFilePipelineCLI.Utility.Disposal;
 
 namespace BatchFilePipelineCLI
 {
@@ -67,7 +67,8 @@ namespace BatchFilePipelineCLI
         /// <returns>Returns the error code that resulted from the programs operation</returns>
         private static async Task<int> Main(string[] args)
         {
-            // Ensure all the reflection types are marked as used
+            // Ensure the foundational elements are created for use
+            using var disposal = DisposalBackup.Init();
             TypePreserver.Init();
             CancellationStack.Register();
 
@@ -122,7 +123,7 @@ namespace BatchFilePipelineCLI
             var environmentVariables = LoadEnvironmentVariables();
 
             // Try to load the library of nodes that are available for use in the pipeline
-            var nodeLibrary = new NodeLibrary();
+            var nodeLibrary = new Pipeline.Nodes.NodeLibrary();
             if (nodeLibrary.TryLoadFromAppDomain() == false)
             {
                 Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
