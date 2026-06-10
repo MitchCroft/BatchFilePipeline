@@ -1,6 +1,5 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Runners;
-using BatchFilePipelineCLI.Pipeline.Workflow.Nodes;
 using BatchFilePipelineCLI.PropertyResolver;
 
 namespace BatchFilePipelineCLI.Pipeline.Nodes.Utility

@@ -25,7 +25,7 @@
         /// <param name="task">The task that is to be monitored</param>
         /// <param name="defaultValue">The default value that is to be returned if task is cancelled</param>
         /// <returns>Returns the result of the task or the default value if it was cancelled</returns>
-        public static async Task<T> SurpressCancellation<T>(this Task<T> task, T defaultValue = default)
+        public static async Task<T?> SurpressCancellation<T>(this Task<T> task, T? defaultValue = default)
         {
             try { return await task; }
             catch (TaskCanceledException) { return defaultValue; }
@@ -48,7 +48,7 @@
         /// <param name="task">The task that is to be monitored</param>
         /// <param name="defaultValue">The default value that is to be returned if task is cancelled</param>
         /// <returns>Returns the result of the task or the default value if it was cancelled</returns>
-        public static async ValueTask<T> SurpressCancellation<T>(this ValueTask<T> task, T defaultValue = default)
+        public static async ValueTask<T?> SurpressCancellation<T>(this ValueTask<T> task, T? defaultValue = default)
         {
             try { return await task; }
             catch (TaskCanceledException) { return defaultValue; }

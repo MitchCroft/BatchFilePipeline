@@ -8,6 +8,7 @@ using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
 using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Utility.Disposal;
+using BatchFilePipelineCLI.Pipeline.Nodes;
 
 namespace BatchFilePipelineCLI
 {
@@ -123,7 +124,7 @@ namespace BatchFilePipelineCLI
             var environmentVariables = LoadEnvironmentVariables();
 
             // Try to load the library of nodes that are available for use in the pipeline
-            var nodeLibrary = new Pipeline.Nodes.NodeLibrary();
+            var nodeLibrary = new NodeLibrary();
             if (nodeLibrary.TryLoadFromAppDomain() == false)
             {
                 Logger.Error($"Unable load the Node Library for processing. Resolve errors and try again");
