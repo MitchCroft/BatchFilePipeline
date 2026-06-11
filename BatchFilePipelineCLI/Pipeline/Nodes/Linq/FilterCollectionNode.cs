@@ -80,7 +80,6 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Linq
         /// Process the pipeline node with the specified inputs and generate a result
         /// </summary>
         /// <param name="context">The context for the currently executing pipline node</param>
-        /// <param name="cancellationToken">Cancellation token that can be used to control the lifespan of the operation</param>
         /// <returns>Returns the output result of the Node describing the operation that was performed</returns>
         public ValueTask<ExecutionResult> ProcessNodeResultAsync(PipelineContext context)
         {
@@ -94,8 +93,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Linq
             // Check if the filter is comparable for processing
             IEnumerable? outputValue = filterValue is IComparable comparableFilter ?
                 FilterMaybeComparable(collection, mode, subValuePath, comparableFilter) :
-                FilterNotComparable(collection, mode, subValuePath, filterValue)
-            ;
+                FilterNotComparable(collection, mode, subValuePath, filterValue);
 
             // Create the output result that will be used
             return ValueTask.FromResult(new ExecutionResult

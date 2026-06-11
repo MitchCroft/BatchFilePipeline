@@ -237,9 +237,20 @@
 					<Default>Process_04</Default>
 				</Connections>
 			</Node>
+			<Node Name="Isolate Video File Name" Id="Process_04" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{Identifier}</FilePath>
+				</Inputs>
+				<Outputs>
+					<Output>FileNameWithExt</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_05</Default>
+				</Connections>
+			</Node>
 
 			<!-- We can transcode the video file down to the target with the available presets -->
-			<Node Name="Get Video Meta-Data" Id="Process_04" TypeId="GetVideoDetails">
+			<Node Name="Get Video Meta-Data" Id="Process_05" TypeId="GetVideoDetails">
 				<Inputs>
 					<FFprobe>{FFprobe}</FFprobe>
 					<Target>{Identifier}</Target>
@@ -248,10 +259,10 @@
 					<Output>FileMetaData</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_05</Default>
+					<Default>Process_06</Default>
 				</Connections>
 			</Node>
-			<Node Name="Find Handbrake Preset Best Fit" Id="Process_05" TypeId="FindHandbrakePresetForVideo">
+			<Node Name="Find Handbrake Preset Best Fit" Id="Process_06" TypeId="FindHandbrakePresetForVideo">
 				<Inputs>
 					<VideoInfo>{FileMetaData}</VideoInfo>
 					<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
@@ -260,10 +271,10 @@
 					<Output>TranscodePreset</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_06</Default>
+					<Default>Process_07</Default>
 				</Connections>
 			</Node>
-			<Node Name="Transcode Raw Video" Id="Process_06" TypeId="TranscodeVideoNode">
+			<Node Name="Transcode Raw Video" Id="Process_07" TypeId="TranscodeVideoNode">
 				<Inputs>
 					<Handbrake>{HandbrakeCLI}</Handbrake>
 					<VideoPath>{Identifier}</VideoPath>
@@ -276,12 +287,12 @@
 					<Output>TranscodeFilePath</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_07</Default>
+					<Default>Process_08</Default>
 				</Connections>
 			</Node>
 
 			<!-- We have the transcoded video file, now we need to know what to do with the subtitles -->
-			<Node Name="Refresh Video Meta-Data" Id="Process_07" TypeId="GetVideoDetails">
+			<Node Name="Refresh Video Meta-Data" Id="Process_08" TypeId="GetVideoDetails">
 				<Inputs>
 					<FFprobe>{FFprobe}</FFprobe>
 					<Target>{TranscodeFilePath}</Target>
@@ -290,10 +301,10 @@
 					<Output>FileMetaData</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_08</Default>
+					<Default>Process_09</Default>
 				</Connections>
 			</Node>
-			<Node Name="Select Streams" Id="Process_08" TypeId="ReflectiveSelect">
+			<Node Name="Select Streams" Id="Process_09" TypeId="ReflectiveSelect">
 				<Inputs>
 					<Source>{FileMetaData}</Source>
 					<Path>Streams</Path>
@@ -302,25 +313,25 @@
 					<Output>Streams</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_09</Default>
+					<Default>Process_10</Default>
 				</Connections>
 			</Node>
-			<Node Name="Isolate Subtitle Streams" Id="Process_09" TypeId="FilterCollection">
+			<Node Name="Isolate Subtitle Streams" Id="Process_10" TypeId="FilterCollection">
 				<Inputs>
 					<Collection>{Streams}</Collection>
 					<SubValue>SubtitleType</SubValue>
 					<Filter>Image</Filter>
 				</Inputs>
-				<Ouputs>
+				<Outputs>
 					<Output>GraphicSubtitleStreams</Output>
-				</Ouputs>
+				</Outputs>
 				<Connections>
-					<Default>Process_10</Default>
+					<Default>Process_11</Default>
 				</Connections>
 			</Node>
 
 			<!-- If there are no graphical subtitle streams in the file, then we can just hand off the transcoded file -->
-			<Node Name="Count Image Streams" Id="Process_10" TypeId="CountCollection">
+			<Node Name="Count Image Streams" Id="Process_11" TypeId="CountCollection">
 				<Inputs>
 					<Collection>{GraphicSubtitleStreams}</Collection>
 				</Inputs>
@@ -328,10 +339,10 @@
 					<Output>GraphicalSubtitleCount</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_11</Default>
+					<Default>Process_12</Default>
 				</Connections>
 			</Node>
-			<Node Name="Check Subtitles Need Processing" Id="Process_11" TypeId="ComparisonNode">
+			<Node Name="Check Subtitles Need Processing" Id="Process_12" TypeId="ComparisonNode">
 				<Inputs>
 					<LeftValue>{GraphicalSubtitleCount}</LeftValue>
 					<RightValue>0</RightValue>
@@ -341,12 +352,12 @@
 					<True>Process_26</True>
 
 					<!-- We will need to process the subtitles that are contained within the file -->
-					<False>Process_12</False>
+					<False>Process_13</False>
 				</Connections>
 			</Node>
 
 			<!-- We want to extract and convert all of the subtitles that are contained within the file -->
-			<Node Name="Extract Subtitles" Id="Process_12" TypeId="ExtractSubtitles">
+			<Node Name="Extract Subtitles" Id="Process_13" TypeId="ExtractSubtitles">
 				<Inputs>
 					<FFmpeg>{FFmpeg}</FFmpeg>
 					<Source>{TranscodeFilePath}</Source>
@@ -357,20 +368,20 @@
 					<Output>ExtractedSubtitles</Output>
 				</Outputs>
 				<Connections>
-					<Default>Process_13</Default>
-				</Connections>
-			</Node>
-			<Node Name="Convert Graphic Subtitles to Text" Id="Process_13" TypeId="ConvertGraphicSubsToText">
-				<Inputs>
-					<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
-					<Streams>{GraphicSubtitleStreams}</Streams>
-					<StorageDir>{WorkingDir}/{RelativeDir}/Subtitles</StorageDir>
-				</Inputs>
-				<Connections>
 					<Default>Process_14</Default>
 				</Connections>
 			</Node>
-			<Node Name="Check Conversion Success" Id="Process_14" TypeId="EstimateSRTConversionSuccess">
+			<Node Name="Convert Graphic Subtitles to Text" Id="Process_14" TypeId="ConvertGraphicSubsToText">
+				<Inputs>
+					<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
+					<Streams>{GraphicSubtitleStreams}</Streams>
+					<SourceDir>{WorkingDir}/{RelativeDir}/Subtitles</SourceDir>
+				</Inputs>
+				<Connections>
+					<Default>Process_15</Default>
+				</Connections>
+			</Node>
+			<Node Name="Check Conversion Success" Id="Process_15" TypeId="EstimateSRTConversionSuccess">
 				<Inputs>
 					<Streams>{GraphicSubtitleStreams}</Streams>
 					<SourceDir>{WorkingDir}/{RelativeDir}/Subtitles</SourceDir>
@@ -380,35 +391,24 @@
 					<Summary>ConversionSummary</Summary>
 				</Outputs>
 				<Connections>
-					<Default>Process_15</Default>
+					<Default>Process_16</Default>
 				</Connections>
 			</Node>
-			<Node Name="Output Conversion Summary" Id="Process_15" TypeId="JSONSerialiseToDiskNode">
+			<Node Name="Output Conversion Summary" Id="Process_16" TypeId="JSONSerialiseToDiskNode">
 				<Inputs>
 					<Value>{ConversionSummary}</Value>
 					<OutputPath>{WorkingDir}/{RelativeDir}/Subtitles/Conversion.json</OutputPath>
 				</Inputs>
 				<Connections>
-					<Default>Process_16</Default>
+					<Default>Process_17</Default>
 				</Connections>
 			</Node>
 
 			<!-- We can remove the graphical subtitles from the file, they won't be needed anymore -->
-			<Node Name="Isolate Video File Name" Id="Process_16" TypeId="GetFileName">
-				<Inputs>
-					<FilePath>{Identifier}</FilePath>
-				</Inputs>
-				<Outputs>
-					<Output>FileNameWithExt</Output>
-				</Outputs>
-				<Connections>
-					<Default>Process_17</Default>
-				</Connections>
-			</Node>
 			<Node Name="Remove Graphical Subtitle Streams" Id="Process_17" TypeId="RemoveStreams">
 				<Inputs>
 					<FFmpeg>{FFmpeg}</FFmpeg>
-					<Source>TranscodeFilePath</Source>
+					<Source>{TranscodeFilePath}</Source>
 					<Streams>{GraphicSubtitleStreams}</Streams>
 					<TargetInfo>{FileMetaData}</TargetInfo>
 					<OutputPath>{WorkingDir}/{RelativeDir}/Output/{FileNameWithExt}</OutputPath>
@@ -512,7 +512,7 @@
 					<Client>{SSHClient}</Client>
 				</Inputs>
 				<Connections>
-					<Default>Process_28</Default>
+					<Default>Process_27</Default>
 				</Connections>
 			</Node>
 
@@ -562,7 +562,7 @@
 					<ValueVariableName>OutputFilePath</ValueVariableName>
 				</Inputs>
 				<Connections>
-					<Default>Process_34</Default>
+					<Default>Process_33</Default>
 				</Connections>
 			</Node>
 
@@ -591,17 +591,17 @@
 					<Default>Process_32</Default>
 				</Connections>
 			</Node>
-			<Node Name="Close Final Output SSH" Id="Process_33" TypeId="CloseSSH">
+			<Node Name="Close Final Output SSH" Id="Process_32" TypeId="CloseSSH">
 				<Inputs>
 					<Client>{SSHClient}</Client>
 				</Inputs>
 				<Connections>
-					<Default>Process_34</Default>
+					<Default>Process_33</Default>
 				</Connections>
 			</Node>
 
 			<!-- We can mark off this file as complete in the manifest to prevent future processing -->
-			<Node Name="Mark Off File in Manifest" Id="Process_34" TypeId="SetManifestData">
+			<Node Name="Mark Off File in Manifest" Id="Process_33" TypeId="SetManifestData">
 				<Inputs>
 					<ManifestPath>{ManifestPath}</ManifestPath>
 					<Identifier>{Identifier}</Identifier>
@@ -609,7 +609,7 @@
 					<Value>Complete</Value>
 				</Inputs>
 				<Connections>
-					<Default></Default>
+					<Default>Process_35</Default>
 				</Connections>
 			</Node>
 
