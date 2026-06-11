@@ -144,9 +144,9 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
             }
 
             // If this is a shared element, then we can check the cache
-            bool isShared = _nodeCharacteristics[typeId].IsShared;
+            bool isShared = _nodeCharacteristics[validTypeId].IsShared;
             if (isShared == true &&
-                _sharedNodes.TryGetValue(typeId, out node) == true)
+                _sharedNodes.TryGetValue(validTypeId, out node) == true)
             {
                 return true;
             }
@@ -157,7 +157,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes
             // If this is shared, we can store it for later use
             if (isShared == true)
             {
-                _sharedNodes[typeId] = node;
+                _sharedNodes[validTypeId] = node;
             }
             return true;
         }

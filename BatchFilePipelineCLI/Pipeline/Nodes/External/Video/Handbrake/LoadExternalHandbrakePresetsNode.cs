@@ -31,7 +31,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.External.Video.Handbrake
         (
             "Output",
             "The collection of available presets that can be used for processing video media",
-            typeof(HandbrakePresetManifestRoot)
+            typeof(IEnumerable<HandbrakePresetOption>)
         );
 
         /*----------Functions----------*/

@@ -193,22 +193,22 @@ namespace BatchFilePipelineCLI.Pipeline.Runners
                 );
             }
 
+            // Log the graph that is being run
+            Logger.Log($"[{nameof(PipelineRunner)}] Running the graph '{graph}' from '{pipeline}' with\n\tEnvironment Variables:\n\t\t{string.Join("\n\t\t", pipeline.EnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}\n\tRuntime Variables:\n\t\t{string.Join("\n\t\t", context.RuntimeVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
+
             // Check that we have the required properties that are needed for this graph to run
             if (graph.RequiredProperties.Count > 0)
             {
-                Logger.Log($"[{nameof(PipelineRunner)}] Evaluating Required Properties for Graph={graph} Pipeline={pipeline}:\n\t{string.Join("\n\t", graph.RequiredProperties.Select((x, i) => $"{i + 1}. {x} = {context.EnvironmentVariables.ContainsKey(x) || context.RuntimeVariables.ContainsKey(x)}"))}");
-                if (graph.RequiredProperties.Any(x => context.EnvironmentVariables.ContainsKey(x) == false && context.RuntimeVariables.ContainsKey(x) == false))
+                Logger.Log($"[{nameof(PipelineRunner)}] Evaluating Required Properties for Graph={graph} Pipeline={pipeline}:\n\t{string.Join("\n\t", graph.RequiredProperties.Select((x, i) => $"{i + 1}. {x} = {pipeline.EnvironmentVariables.ContainsKey(x) || context.RuntimeVariables.ContainsKey(x)}"))}");
+                if (graph.RequiredProperties.Any(x => pipeline.EnvironmentVariables.ContainsKey(x) == false && context.RuntimeVariables.ContainsKey(x) == false))
                 {
                     return new ExecutionResult
                     (
                         500,
-                        $"[{nameof(PipelineRunner)}] Missing Required Properties when processing Graph={graph} Pipeline={pipeline}: {string.Join(", ", graph.RequiredProperties.Where(x => context.EnvironmentVariables.ContainsKey(x) == false && context.RuntimeVariables.ContainsKey(x) == false))}"
+                        $"[{nameof(PipelineRunner)}] Missing Required Properties when processing Graph={graph} Pipeline={pipeline}: {string.Join(", ", graph.RequiredProperties.Where(x => pipeline.EnvironmentVariables.ContainsKey(x) == false && context.RuntimeVariables.ContainsKey(x) == false))}"
                     );
                 }
             }
-
-            // Log the graph that is being run
-            Logger.Log($"[{nameof(PipelineRunner)}] Running the graph '{graph}' from '{pipeline}' with\n\tEnvironment Variables:\n\t\t{string.Join("\n\t\t", pipeline.EnvironmentVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}\n\tRuntime Variables:\n\t\t{string.Join("\n\t\t", context.RuntimeVariables.Select((v, i) => $"{i}.\t{v.Key}={v.Value}"))}");
 
             // Create the objects that will be used to process the graph cycle
             List<string> progression = new(Math.Min(maxTraversalDepth, graph.Nodes.Count));

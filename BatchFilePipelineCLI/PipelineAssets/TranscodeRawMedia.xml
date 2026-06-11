@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Transcode Raw Media
+
+	This pipeline will process a directory of media files and look for videos that have
+	not been processed yet. Processing each file will:
+
+		1. Transcode the file using Handbrake -> Reducing the size from the raw rip
+		   output to something more manageable
+		2. Extract sub-titles image based sub-titles -> Extract the subtitles and 
+		   convert them to text based subtitles. Archive the subtitles for later use
+		3. Move the generated files to an output location -> Local or on a remote SSH server
+
+	Applications:
+	- ffprobe = Read video information to know how to process them
+	- ffmpeg = Extract and remux video files
+	- SubtitleEdit = Convert graphical subtitles to text based subtitles
+	- HandbrakeCLI = CLI Handbrake application that can be used to apply to transcoding preset for size reduction
+
+	Expected Inputs:
+	- InputDir = The directory on the local machine that will be scanned for input files that need to be processed
+	- IntermediateDir = The local directory where the working files will be placed while being processed
+	- ServerOutputDir = The remote directory where the finished files can be moved to if they are being uploaded
+	- LocalOutputDir = The local directory where the finished files can be moved to if they are being stored
+	- ServerSubtitleArchiveDir = The remote directory where the archived subtitle files can be moved to if they are being uploaded
+	- LocalSubtitleArchiveDir = The local directory where the archived subtitle files can be moved to if they are being stored
+	- HandbrakeManifestPath = The filepath to the JSON file describing the different Handbrake presets that can be applied when processing
+	- Dictionary = The filepath to the plain text file with various words that can eb used as a basic evaluation of subtitle conversion success
+	- NotifReceiver = The email address to be sent a message when the process has finished running
+-->
+
+<Pipeline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Transcode Raw Media">
+	<!-- There are some basic settings that we are expecting to be available for processing -->
+	<Environment>
+		<!-- By default, it's assumed that these applications are available in the command line -->
+		<FFprobe>ffprobe</FFprobe>
+		<FFmpeg>ffmpeg</FFmpeg>
+		<SubtitleEdit>SubtitleEdit</SubtitleEdit>
+		<HandbrakeCLI>HandBrakeCLI</HandbrakeCLI>
+
+		<!-- Video processing settings -->
+		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
+		<HardwareAcceleration>False</HardwareAcceleration>
+	</Environment>
+
+	<!-- We can define the different graphs that will be used to process the data requests -->
+	<Workflow EntryGraphId="Main">
+		<!-- The main entry point of the pipeline, will be used to join all the required pieces together for operating -->
+		<Graph Name="Main Graph" Id="Main" EntryNodeId="Main_00">
+			<!-- There are some expected values that will be needed to process the functions -->
+			<Required>InputDir</Required>
+			<Required>ExtensionFilter</Required>
+
+			<!-- Process the preparation that is needed to run the graph -->
+			<Node Name="Prepare Pipeline" Id="Main_00" TypeId="RunGraph">
+				<Inputs>
+					<GraphId>Prepare</GraphId>
+				</Inputs>
+				<Outputs>
+					<WorkingDir>WorkingDir</WorkingDir>
+					<HandbrakePresets>HandbrakePresets</HandbrakePresets>
+					<ResultHandler>ResultHandler</ResultHandler>
+				</Outputs>
+				<Connections>
+					<Default>Main_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to find the files that will be able to be processed -->
+			<Node Name="Find Target Files" Id="Main_01" TypeId="FindFilesInDirectory">
+				<Inputs>
+					<SearchDirectory>{InputDir}</SearchDirectory>
+					<SearchPattern>{ExtensionFilter}</SearchPattern>
+				</Inputs>
+				<Outputs>
+					<Output>Files</Output>
+				</Outputs>
+			</Node>
+		</Graph>
+
+
+		<!-- There are a number of elements that we are expecting to be available for use while running the graph -->
+		<Graph Name="Prepare Working Environment" Id="Prepare" EntryNodeId="Prepare_00">
+			<!-- There are some expected properties to be available for processing when running the setup -->
+			<Required>HandbrakeManifestPath</Required>
+			<Required>IntermediateDir</Required>
+
+			<!-- We want to compile all of the starting information so that it can be used for processing -->
+			<Node Name="Load Handbrake Presets" Id="Prepare_00" TypeId="LoadExternalHandbrakePresets">
+				<Inputs>
+					<ManifestPath>{HandbrakeManifestPath}</ManifestPath>
+				</Inputs>
+				<Outputs>
+					<Output>HandbrakePresets</Output>
+				</Outputs>
+				<Connections>
+					<Default>Prepare_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Setup a working directory that can be used to store the files in progress -->
+			<Node Name="Format Working Dir Name" Id="Prepare_01" TypeId="FormatDateTime">
+				<Inputs>
+					<FormatString>yyyyMMdd_hhmmss</FormatString>
+				</Inputs>
+				<Outputs>
+					<Output>Timestamp</Output>
+				</Outputs>
+				<Connections>
+					<Default>Prepare_02</Default>
+				</Connections>
+			</Node>
+			<Node Name="Compile Working Dir Path" Id="Prepare_02" TypeId="CombinePath">
+				<Inputs>
+					<LeftPath>{IntermediateDir}</LeftPath>
+					<RightPath>Working_{Timestamp}</RightPath>
+				</Inputs>
+				<Outputs>
+					<Output>WorkingDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>Prepare_03</Default>
+				</Connections>
+			</Node>
+
+			<!-- Find out from the user if they want to upload these results to a server or keep them local -->
+			<Node Name="Prompt Final Destination" Id="Prepare_03" TypeId="UserBranch">
+				<Inputs>
+					<Prompt>Do you want to upload the resulting files to the SSH server or store them locally?</Prompt>
+					<OptionsText>Local|Upload</OptionsText>
+					<DefaultSelection>0</DefaultSelection>
+				</Inputs>
+				<Outputs>
+					<SelectedValue>ResultHandler</SelectedValue>
+				</Outputs>
+				<Connections>
+					<Default>Prepare_04</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can pass up the values that have been determined to by used while processing -->
+			<Node Name="Export Prepared Values" Id="Prepare_04" TypeId="ExportValues">
+				<Inputs>
+					<WorkingDir>{WorkingDir}</WorkingDir>
+					<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
+					<ResultHandler>{ResultHandler}</ResultHandler>
+				</Inputs>
+			</Node>
+		</Graph>
+
+	</Workflow>
+</Pipeline>

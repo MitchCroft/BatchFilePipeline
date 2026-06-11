@@ -1,4 +1,5 @@
-﻿using BatchFilePipelineCLI.Pipeline.Data;
+﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Data;
 using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Data;
@@ -106,6 +107,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
                 {
                     return result;
                 }
+                Logger.Success($"[{GetType().Name}] Successfully ran GraphId={graphId} Pipeline={pipeline}");
 
                 // We want to isolate the values that are needed for the final output
                 _outputValues.Clear();
