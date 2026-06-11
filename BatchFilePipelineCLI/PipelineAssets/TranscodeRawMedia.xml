@@ -41,6 +41,9 @@
 		<!-- Video processing settings -->
 		<ExtensionFilter>*.mkv|*.mp4</ExtensionFilter>
 		<HardwareAcceleration>False</HardwareAcceleration>
+
+		<!-- Operational Structure -->
+		<MaxTraversalDepth>35</MaxTraversalDepth>
 	</Environment>
 
 	<!-- We can define the different graphs that will be used to process the data requests -->
@@ -60,6 +63,7 @@
 					<WorkingDir>WorkingDir</WorkingDir>
 					<HandbrakePresets>HandbrakePresets</HandbrakePresets>
 					<ResultHandler>ResultHandler</ResultHandler>
+					<ManifestPath>ManifestPath</ManifestPath>
 				</Outputs>
 				<Connections>
 					<Default>Main_01</Default>
@@ -75,6 +79,19 @@
 				<Outputs>
 					<Output>Files</Output>
 				</Outputs>
+				<Connections>
+					<Default>Main_02</Default>
+				</Connections>
+			</Node>
+
+			<!-- Process each of the identified files so that the results can be worked out -->
+			<Node Name="Process Each File" Id="Main_02" TypeId="ForEach">
+				<Inputs>
+					<GraphId>Process</GraphId>
+					<Collection>{Files}</Collection>
+					<ValueVariableName>Identifier</ValueVariableName>
+					<CancelOnError>False</CancelOnError>
+				</Inputs>
 			</Node>
 		</Graph>
 
@@ -144,9 +161,555 @@
 					<WorkingDir>{WorkingDir}</WorkingDir>
 					<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
 					<ResultHandler>{ResultHandler}</ResultHandler>
+					<ManifestPath>{IntermediateDir}/TranscodeRawMedia_Manifest.json</ManifestPath>
 				</Inputs>
 			</Node>
 		</Graph>
 
+		<!-- We can have a graph that is dedicated completly to processing each file that has been identifed -->
+		<Graph Name="Process File" Id="Process" EntryNodeId="Process_00">
+			<!-- There are a number of properties that are expected to be operational -->
+			<Required>ManifestPath</Required>
+			<Required>Identifier</Required>
+			<Required>InputDir</Required>
+			<Required>FFprobe</Required>
+			<Required>HandbrakePresets</Required>
+			<Required>HandbrakeCLI</Required>
+			<Required>WorkingDir</Required>
+			<Required>HardwareAcceleration</Required>
+			<Required>HandbrakeManifestPath</Required>
+			<Required>FFmpeg</Required>
+			<Required>SubtitleEdit</Required>
+			<Required>Dictionary</Required>
+			<Required>ResultHandler</Required>
+			<Required>LocalSubtitleArchiveDir</Required>
+			<Required>ServerSubtitleArchiveDir</Required>
+
+			<!-- First we can check the manifest to see if we've already processed this file -->
+			<Node Name="Check if File Processed" Id="Process_00" TypeId="GetManifestData">
+				<Inputs>
+					<ManifestPath>{ManifestPath}</ManifestPath>
+					<Identifier>{Identifier}</Identifier>
+					<Key>State</Key>
+				</Inputs>
+				<Outputs>
+					<Output>FileState</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_01</Default>
+				</Connections>
+			</Node>
+			<Node Name="Compare Initial State" Id="Process_01" TypeId="Comparison">
+				<Inputs>
+					<LeftValue>{FileState}</LeftValue>
+					<RightValue>Complete</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- If the file is complete, we can skip processing the file -->
+					<True></True>
+
+					<!-- If the file hasn't been processed, we need to handle the different stages -->
+					<False>Process_02</False>
+				</Connections>
+			</Node>
+
+			<!-- We want the relative path of the file so we know how to position it while processing -->
+			<Node Name="Get File Relative Path" Id="Process_02" TypeId="GetRelativePath">
+				<Inputs>
+					<RelativeTo>{InputDir}</RelativeTo>
+					<Path>{Identifier}</Path>
+				</Inputs>
+				<Outputs>
+					<Output>RelativeDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_03</Default>
+				</Connections>
+			</Node>
+			<Node Name="Get Relative Parent Directory" Id="Process_03" TypeId="GetDirectoryName">
+				<Inputs>
+					<FilePath>{RelativeDir}</FilePath>
+				</Inputs>
+				<Outputs>
+					<Output>RelativeParentDir</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_04</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can transcode the video file down to the target with the available presets -->
+			<Node Name="Get Video Meta-Data" Id="Process_04" TypeId="GetVideoDetails">
+				<Inputs>
+					<FFprobe>{FFprobe}</FFprobe>
+					<Target>{Identifier}</Target>
+				</Inputs>
+				<Outputs>
+					<Output>FileMetaData</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_05</Default>
+				</Connections>
+			</Node>
+			<Node Name="Find Handbrake Preset Best Fit" Id="Process_05" TypeId="FindHandbrakePresetForVideo">
+				<Inputs>
+					<VideoInfo>{FileMetaData}</VideoInfo>
+					<HandbrakePresets>{HandbrakePresets}</HandbrakePresets>
+				</Inputs>
+				<Outputs>
+					<Output>TranscodePreset</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_06</Default>
+				</Connections>
+			</Node>
+			<Node Name="Transcode Raw Video" Id="Process_06" TypeId="TranscodeVideoNode">
+				<Inputs>
+					<Handbrake>{HandbrakeCLI}</Handbrake>
+					<VideoPath>{Identifier}</VideoPath>
+					<Preset>{TranscodePreset}</Preset>
+					<OutputDir>{WorkingDir}/{RelativeDir}/Transcode</OutputDir>
+					<AllowHardwareAcceleration>{HardwareAcceleration}</AllowHardwareAcceleration>
+					<AdditionalProcessArgs>--markers --preset-import-file "{HandbrakeManifestPath}"</AdditionalProcessArgs>
+				</Inputs>
+				<Outputs>
+					<Output>TranscodeFilePath</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_07</Default>
+				</Connections>
+			</Node>
+
+			<!-- We have the transcoded video file, now we need to know what to do with the subtitles -->
+			<Node Name="Refresh Video Meta-Data" Id="Process_07" TypeId="GetVideoDetails">
+				<Inputs>
+					<FFprobe>{FFprobe}</FFprobe>
+					<Target>{TranscodeFilePath}</Target>
+				</Inputs>
+				<Outputs>
+					<Output>FileMetaData</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_08</Default>
+				</Connections>
+			</Node>
+			<Node Name="Select Streams" Id="Process_08" TypeId="ReflectiveSelect">
+				<Inputs>
+					<Source>{FileMetaData}</Source>
+					<Path>Streams</Path>
+				</Inputs>
+				<Outputs>
+					<Output>Streams</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_09</Default>
+				</Connections>
+			</Node>
+			<Node Name="Isolate Subtitle Streams" Id="Process_09" TypeId="FilterCollection">
+				<Inputs>
+					<Collection>{Streams}</Collection>
+					<SubValue>SubtitleType</SubValue>
+					<Filter>Image</Filter>
+				</Inputs>
+				<Ouputs>
+					<Output>GraphicSubtitleStreams</Output>
+				</Ouputs>
+				<Connections>
+					<Default>Process_10</Default>
+				</Connections>
+			</Node>
+
+			<!-- If there are no graphical subtitle streams in the file, then we can just hand off the transcoded file -->
+			<Node Name="Count Image Streams" Id="Process_10" TypeId="CountCollection">
+				<Inputs>
+					<Collection>{GraphicSubtitleStreams}</Collection>
+				</Inputs>
+				<Outputs>
+					<Output>GraphicalSubtitleCount</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_11</Default>
+				</Connections>
+			</Node>
+			<Node Name="Check Subtitles Need Processing" Id="Process_11" TypeId="ComparisonNode">
+				<Inputs>
+					<LeftValue>{GraphicalSubtitleCount}</LeftValue>
+					<RightValue>0</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- We don't need to do anything with the file, we can just finish processing it -->
+					<True>Process_26</True>
+
+					<!-- We will need to process the subtitles that are contained within the file -->
+					<False>Process_12</False>
+				</Connections>
+			</Node>
+
+			<!-- We want to extract and convert all of the subtitles that are contained within the file -->
+			<Node Name="Extract Subtitles" Id="Process_12" TypeId="ExtractSubtitles">
+				<Inputs>
+					<FFmpeg>{FFmpeg}</FFmpeg>
+					<Source>{TranscodeFilePath}</Source>
+					<Streams>{GraphicSubtitleStreams}</Streams>
+					<StorageDir>{WorkingDir}/{RelativeDir}/Subtitles</StorageDir>
+				</Inputs>
+				<Outputs>
+					<Output>ExtractedSubtitles</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_13</Default>
+				</Connections>
+			</Node>
+			<Node Name="Convert Graphic Subtitles to Text" Id="Process_13" TypeId="ConvertGraphicSubsToText">
+				<Inputs>
+					<SubtitleEdit>{SubtitleEdit}</SubtitleEdit>
+					<Streams>{GraphicSubtitleStreams}</Streams>
+					<StorageDir>{WorkingDir}/{RelativeDir}/Subtitles</StorageDir>
+				</Inputs>
+				<Connections>
+					<Default>Process_14</Default>
+				</Connections>
+			</Node>
+			<Node Name="Check Conversion Success" Id="Process_14" TypeId="EstimateSRTConversionSuccess">
+				<Inputs>
+					<Streams>{GraphicSubtitleStreams}</Streams>
+					<SourceDir>{WorkingDir}/{RelativeDir}/Subtitles</SourceDir>
+					<DictionaryFile>{Dictionary}</DictionaryFile>
+				</Inputs>
+				<Outputs>
+					<Summary>ConversionSummary</Summary>
+				</Outputs>
+				<Connections>
+					<Default>Process_15</Default>
+				</Connections>
+			</Node>
+			<Node Name="Output Conversion Summary" Id="Process_15" TypeId="JSONSerialiseToDiskNode">
+				<Inputs>
+					<Value>{ConversionSummary}</Value>
+					<OutputPath>{WorkingDir}/{RelativeDir}/Subtitles/Conversion.json</OutputPath>
+				</Inputs>
+				<Connections>
+					<Default>Process_16</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can remove the graphical subtitles from the file, they won't be needed anymore -->
+			<Node Name="Isolate Video File Name" Id="Process_16" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{Identifier}</FilePath>
+				</Inputs>
+				<Outputs>
+					<Output>FileNameWithExt</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_17</Default>
+				</Connections>
+			</Node>
+			<Node Name="Remove Graphical Subtitle Streams" Id="Process_17" TypeId="RemoveStreams">
+				<Inputs>
+					<FFmpeg>{FFmpeg}</FFmpeg>
+					<Source>TranscodeFilePath</Source>
+					<Streams>{GraphicSubtitleStreams}</Streams>
+					<TargetInfo>{FileMetaData}</TargetInfo>
+					<OutputPath>{WorkingDir}/{RelativeDir}/Output/{FileNameWithExt}</OutputPath>
+				</Inputs>
+				<Connections>
+					<Default>Process_18</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can copy all of the subtitle files that were extracted to the output directory that will be processed -->
+			<Node Name="Find File Name Without Extension" Id="Process_18" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{Identifier}</FilePath>
+					<IncludeExtension>False</IncludeExtension>
+				</Inputs>
+				<Outputs>
+					<Output>TargetFileName</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_19</Default>
+				</Connections>
+			</Node>
+			<Node Name="Find Related Subtitles" Id="Process_19" TypeId="FindFilesInDirectory">
+				<Inputs>
+					<SearchDirectory>{WorkingDir}/{RelativeDir}/Subtitles</SearchDirectory>
+					<SearchPattern>*.srt</SearchPattern>
+				</Inputs>
+				<Outputs>
+					<Output>SubtitleFiles</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_20</Default>
+				</Connections>
+			</Node>
+			<Node Name="Move Subtitle Files to Output Directory" Id="Process_20" TypeId="ForEach">
+				<Inputs>
+					<GraphId>MoveSub</GraphId>
+					<Collection>{SubtitleFiles}</Collection>
+					<ValueVariableName>SubtitlePath</ValueVariableName>
+				</Inputs>
+				<Connections>
+					<Default>Process_21</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to figure out if the subtitle data is going to the local or remote location -->
+			<Node Name="Check if Uploading Files" Id="Process_21" TypeId="Comparison">
+				<Inputs>
+					<LeftValue>{ResultHandler}</LeftValue>
+					<RightValue>Upload</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- The files can just be placed in the local output directory for later manual use -->
+					<False>Process_22</False>
+
+					<!-- We need to upload the files to the SSH server for storage and use -->
+					<True>Process_23</True>
+				</Connections>
+			</Node>
+
+			<!-- We can move the subtitle directory to the local archive location for later use -->
+			<Node Name="Local Archive Subtitle Data" Id="Process_22" TypeId="CopyDirectory">
+				<Inputs>
+					<TargetDir>{WorkingDir}/{RelativeDir}/Subtitles</TargetDir>
+					<DestinationPath>{LocalSubtitleArchiveDir}/{RelativeParentDir}</DestinationPath>
+					<RenameDirectory>{FileNameWithExt}</RenameDirectory>
+				</Inputs>
+				<Connections>
+					<Default>Process_27</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to upload the subtitle archive data to the server location -->
+			<Node Name="Open SSH Connection for Archive" Id="Process_23" TypeId="OpenSSH">
+				<Inputs>
+					<Host>{SSH_HOST}</Host>
+					<Username>{SSH_USER}</Username>
+					<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+					<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+				</Inputs>
+				<Outputs>
+					<Client>SSHClient</Client>
+				</Outputs>
+				<Connections>
+					<Default>Process_24</Default>
+				</Connections>
+			</Node>
+			<Node Name="Remote Archive Subtitle Data" Id="Process_24" TypeId="UploadSSHDirectory">
+				<Inputs>
+					<Client>{SSHClient}</Client>
+					<TargetDir>{WorkingDir}/{RelativeDir}/Subtitles</TargetDir>
+					<DestinationPath>{ServerSubtitleArchiveDir}/{RelativeParentDir}</DestinationPath>
+					<RenameDirectory>{FileNameWithExt}</RenameDirectory>
+				</Inputs>
+				<Connections>
+					<Default>Process_25</Default>
+				</Connections>
+			</Node>
+			<Node Name="Close SSH Connection for Archive" Id="Process_25" TypeId="CloseSSH">
+				<Inputs>
+					<Client>{SSHClient}</Client>
+				</Inputs>
+				<Connections>
+					<Default>Process_28</Default>
+				</Connections>
+			</Node>
+
+			<!-- If there are no subtitles, then we can just move the transcoded file into the output location -->
+			<Node Name="Move Transcode for Output" Id="Process_26" TypeId="MoveFile">
+				<Inputs>
+					<SourceFilePath>{TranscodeFilePath}</SourceFilePath>
+					<DestinationFilePath>{WorkingDir}/{RelativeDir}/Output/{FileNameWithExt}</DestinationFilePath>
+				</Inputs>
+				<Connections>
+					<Default>Process_27</Default>
+				</Connections>
+			</Node>
+
+			<!-- We have the final output folder with all of the required files that need to be moved to their final location -->
+			<Node Name="Find Final Output Files" Id="Process_27" TypeId="FindFilesInDirectory">
+				<Inputs>
+					<SearchDirectory>{WorkingDir}/{RelativeDir}/Output</SearchDirectory>
+					<SearchPattern>*</SearchPattern>
+				</Inputs>
+				<Outputs>
+					<Output>FinalFiles</Output>
+				</Outputs>
+				<Connections>
+					<Default>Process_28</Default>
+				</Connections>
+			</Node>
+			<Node Name="Check if Uploading Files" Id="Process_28" TypeId="Comparison">
+				<Inputs>
+					<LeftValue>{ResultHandler}</LeftValue>
+					<RightValue>Upload</RightValue>
+				</Inputs>
+				<Connections>
+					<!-- We have a collection of files that need to be moved to the local location -->
+					<False>Process_29</False>
+
+					<!-- We have the collection of files that will need to be uploaded to the remote server -->
+					<True>Process_30</True>
+				</Connections>
+			</Node>
+
+			<!-- We need to move all of the files to the target location -->
+			<Node Name="Copy Output Locally" Id="Process_29" TypeId="ForEach">
+				<Inputs>
+					<GraphId>OutputLocal</GraphId>
+					<Collection>{FinalFiles}</Collection>
+					<ValueVariableName>OutputFilePath</ValueVariableName>
+				</Inputs>
+				<Connections>
+					<Default>Process_34</Default>
+				</Connections>
+			</Node>
+
+			<!-- We need to setup a remote server connection and process the uploading of the files -->
+			<Node Name="Open Final Output SSH" Id="Process_30" TypeId="OpenSSH">
+				<Inputs>
+					<Host>{SSH_HOST}</Host>
+					<Username>{SSH_USER}</Username>
+					<PrivateKey>{SSH_PRIVATE_KEY}</PrivateKey>
+					<PrivateKeyPassphrase>{SSH_PRIVATE_KEY_PASS}</PrivateKeyPassphrase>
+				</Inputs>
+				<Outputs>
+					<Client>SSHClient</Client>
+				</Outputs>
+				<Connections>
+					<Default>Process_31</Default>
+				</Connections>
+			</Node>
+			<Node Name="Copy Output Remote" Id="Process_31" TypeId="ForEach">
+				<Inputs>
+					<GraphId>OutputRemote</GraphId>
+					<Collection>{FinalFiles}</Collection>
+					<ValueVariableName>OutputFilePath</ValueVariableName>
+				</Inputs>
+				<Connections>
+					<Default>Process_32</Default>
+				</Connections>
+			</Node>
+			<Node Name="Close Final Output SSH" Id="Process_33" TypeId="CloseSSH">
+				<Inputs>
+					<Client>{SSHClient}</Client>
+				</Inputs>
+				<Connections>
+					<Default>Process_34</Default>
+				</Connections>
+			</Node>
+
+			<!-- We can mark off this file as complete in the manifest to prevent future processing -->
+			<Node Name="Mark Off File in Manifest" Id="Process_34" TypeId="SetManifestData">
+				<Inputs>
+					<ManifestPath>{ManifestPath}</ManifestPath>
+					<Identifier>{Identifier}</Identifier>
+					<Key>State</Key>
+					<Value>Complete</Value>
+				</Inputs>
+				<Connections>
+					<Default></Default>
+				</Connections>
+			</Node>
+
+			<!-- We can delete the working directory that is no longer needed for processing -->
+			<Node Name="Delete Working Directory" Id="Process_35" TypeId="DeleteDirectory">
+				<Inputs>
+					<TargetDir>{WorkingDir}/{RelativeDir}</TargetDir>
+				</Inputs>
+			</Node>
+		</Graph>
+
+		<!-- This graph is going to be used to take an individual subtitle file and move it to the export location -->
+		<Graph Name="Move Subtitle to Output" Id="MoveSub" EntryNodeId="MoveSub_00">
+			<!-- There are going to be some expected values that will determine how this process will operate -->
+			<Required>SubtitlePath</Required>
+			<Required>WorkingDir</Required>
+			<Required>RelativeDir</Required>
+			<Required>TargetFileName</Required>
+
+			<!-- We're going to move the subtitle file into the output location to be batch processed at the end of the operation -->
+			<Node Name="Find Subtitle File Name" Id="MoveSub_00" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{SubtitlePath}</FilePath>
+					<IncludeExtension>False</IncludeExtension>
+				</Inputs>
+				<Outputs>
+					<Output>SubtitleName</Output>
+				</Outputs>
+				<Connections>
+					<Default>MoveSub_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Copy the subtitle file to the output location that will be handled -->
+			<Node Name="Copy Subtitle File" Id="MoveSub_01" TypeId="CopyFile">
+				<Inputs>
+					<TargetFile>{SubtitlePath}</TargetFile>
+					<DestinationPath>{WorkingDir}/{RelativeDir}/Output/{TargetFileName}.{SubtitleName}.srt</DestinationPath>
+				</Inputs>
+			</Node>
+		</Graph>
+
+		<!-- We can use a graph to copy all of the output files into the local output location -->
+		<Graph Name="Move Output to Local Destination" Id="OutputLocal" EntryNodeId="OutputLocal_00">
+			<!-- There are some expected values that will be needed for processing -->
+			<Required>OutputFilePath</Required>
+			<Required>LocalOutputDir</Required>
+			<Required>RelativeParentDir</Required>
+
+			<!-- We can just copy the file straight into the local output location -->
+			<Node Name="Find Output File Name" Id="OutputLocal_00" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{OutputFilePath}</FilePath>
+				</Inputs>
+				<Outputs>
+					<Output>OutputFileName</Output>
+				</Outputs>
+				<Connections>
+					<Default>OutputLocal_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Copy the file from the output location to the final location -->
+			<Node Name="Move Output File to Location" Id="OutputLocal_01" TypeId="MoveFile">
+				<Inputs>
+					<SourceFilePath>{OutputFilePath}</SourceFilePath>
+					<DestinationFilePath>{LocalOutputDir}/{RelativeParentDir}/{OutputFileName}</DestinationFilePath>
+				</Inputs>
+			</Node>
+		</Graph>
+
+		<!-- We can use a graph to upload all of the output files into the remote output location -->
+		<Graph Name="Upload Output to Remote Destination" Id="OutputRemote" EntryNodeId="OutputRemote_00">
+			<!-- There are some expected values that will be needed for processing -->
+			<Required>OutputFilePath</Required>
+			<Required>ServerOutputDir</Required>
+			<Required>RelativeParentDir</Required>
+			<Required>SSHClient</Required>
+
+			<!-- We need to know the regular name of the file to be able to copy it into place -->
+			<Node Name="Find Output File Name" Id="OutputRemote_00" TypeId="GetFileName">
+				<Inputs>
+					<FilePath>{OutputFilePath}</FilePath>
+				</Inputs>
+				<Outputs>
+					<Output>OutputFileName</Output>
+				</Outputs>
+				<Connections>
+					<Default>OutputRemote_01</Default>
+				</Connections>
+			</Node>
+
+			<!-- Upload the file to the target destination for use -->
+			<Node Name="Upload Output File to Location" Id="OutputRemote_01" TypeId="UploadSSHFile">
+				<Inputs>
+					<Client>{SSHClient}</Client>
+					<TargetFile>{OutputFilePath}</TargetFile>
+					<DestinationPath>{ServerOutputDir}/{RelativeParentDir}/{OutputFileName}</DestinationPath>
+				</Inputs>
+			</Node>
+		</Graph>
 	</Workflow>
 </Pipeline>

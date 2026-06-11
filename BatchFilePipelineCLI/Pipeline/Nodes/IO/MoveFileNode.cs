@@ -17,14 +17,14 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.IO
         /// </summary>
         private readonly Property _sourceProperty = Property.Create
         (
-            "SourceFileName",
+            "SourceFilePath",
             "The path to the original file that is to be copied",
             typeof(string),
             example: "Path/To/File/Source.txt"
         );
         private readonly Property _destinationProperty = Property.Create
         (
-            "DestinationFileName",
+            "DestinationFilePath",
             "The file path where the copy of the file should be placed",
             typeof(string),
             example: "Path/To/File/Destination.txt"

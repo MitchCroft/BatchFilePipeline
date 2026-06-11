@@ -38,6 +38,12 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
             "The name that will be given to the runtime variable that contains the current value of the element being processed in the collection",
             "LoopValue"
         );
+        private readonly Property _cancelOnErrorProperty = Property.Create
+        (
+            "CancelOnError",
+            "Flags if the loop should be abandoned if an error occurrs while processing",
+            true
+        );
 
         /*----------Functions----------*/
         //PROTECTED
@@ -46,7 +52,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
         /// Retrieve the collection of properties that are needed by the child class to process
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        protected override IList<Property> GetChildInputProperties() => [_collectionProperty, _indexVariableNameProperty, _valueVariableNameProperty];
+        protected override IList<Property> GetChildInputProperties() => [_collectionProperty, _indexVariableNameProperty, _valueVariableNameProperty, _cancelOnErrorProperty];
 
         /// <summary>
         /// Handle the process of raising the required logic for the node, with the base elements worked out for processing
@@ -63,6 +69,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
             IEnumerable collection = context.GetInput<IEnumerable>(_collectionProperty);
             string indexVariableName = context.GetInput<string>(_indexVariableNameProperty);
             string valueVariableName = context.GetInput<string>(_valueVariableNameProperty);
+            bool cancelOnError = context.GetInput<bool>(_cancelOnErrorProperty);
             Logger.Log($"[{nameof(ForEachNode)}] Linking to GraphId={graphId} Pipeline={pipelineId}");
 
             // Iterate over and process all of the elements in the collection
@@ -113,7 +120,11 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
                 if (result.IsError == true)
                 {
                     Logger.Error($"[{nameof(ForEachNode)}] Encountered an error while processing '{value}' with the GraphId={graphId} Pipeline={pipelineId}\n{result}");
-                    return result;
+                    if (cancelOnError == true)
+                    {
+                        return result;
+                    }
+                    continue;
                 }
 
                 // Record the results we got for this iteration
