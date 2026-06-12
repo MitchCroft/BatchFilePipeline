@@ -99,25 +99,25 @@
 				</Outputs>
 				<Connections>
 					<!-- If everything goes right, then we can finish off the processing of this collection -->
-					<Default>Process_03</Default>
+					<Default>Main_03</Default>
 
 					<!-- If something has gone wrong, we want to leave the working directory so we can troubleshoot -->
-					<Failure>Process_04</Failure>
+					<Failure>Main_04</Failure>
 				</Connections>
 			</Node>
 
 			<!-- Remove the working directory, we don't need the files anymore -->
-			<Node Name="Clean Up Working Directory" Id="Process_03" TypeId="DeleteDirectory">
+			<Node Name="Clean Up Working Directory" Id="Main_03" TypeId="DeleteDirectory">
 				<Inputs>
 					<TargetDir>{WorkingDir}</TargetDir>
 				</Inputs>
 				<Connections>
-					<Default>Process_04</Default>
+					<Default>Main_04</Default>
 				</Connections>
 			</Node>
 
 			<!-- Send a message to the receiver that the process has been completed -->
-			<Node Name="Send Completion Notification" Id="Process_04" TypeId="SendEmail">
+			<Node Name="Send Completion Notification" Id="Main_04" TypeId="SendEmail">
 				<Inputs>
 					<From>{SMTP_SENDER}</From>
 					<FromName>{SMTP_SENDER_NAME}</FromName>
