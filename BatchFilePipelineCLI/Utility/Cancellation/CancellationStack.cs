@@ -19,7 +19,7 @@ namespace BatchFilePipelineCLI.Utility.Cancellation
         /// <summary>
         /// Defines a stack of the cancellation tokens that are actively being used for management
         /// </summary>
-        private static readonly Stack<CancellationTokenSource> _tokenStack = new();
+        private static readonly List<CancellationTokenSource> _tokenStack = new();
 
         /*----------Functions----------*/
         //PUBLIC
@@ -40,14 +40,14 @@ namespace BatchFilePipelineCLI.Utility.Cancellation
         /// <returns>Returns the disposable cancellation token that can be used for reference</returns>
         public static DisposableCancellationToken PushSource(params CancellationToken[] additional)
         {
-            var prior = _tokenStack.Count > 0 ? _tokenStack.Peek() : _rootToken;
+            var prior = _tokenStack.Count > 0 ? _tokenStack[^1] : _rootToken;
             var tokens = new[] { prior.Token };
             if (additional?.Length > 0)
             {
                 tokens = tokens.Concat(additional).ToArray();
             }
             var next = CancellationTokenSource.CreateLinkedTokenSource(tokens);
-            _tokenStack.Push(next);
+            _tokenStack.Add(next);
             return new DisposableCancellationToken(next.Token);
         }
 
@@ -62,12 +62,13 @@ namespace BatchFilePipelineCLI.Utility.Cancellation
             {
                 throw new ArgumentException($"[{nameof(CancellationStack)}] Unable to pop next token, stack is empty");
             }
-            if (_tokenStack.Peek().Token.Equals(token) == false)
+            var next = _tokenStack[^1];
+            if (next.Token.Equals(token) == false)
             {
                 Logger.Warning($"[{nameof(CancellationStack)}] The supplied token is not next on the stack");
                 return false;
             }
-            var next = _tokenStack.Pop();
+            _tokenStack.RemoveAt(_tokenStack.Count - 1);
             next.Cancel();
             return true;
         }
@@ -93,12 +94,20 @@ namespace BatchFilePipelineCLI.Utility.Cancellation
                 return;
             }
 
-            // Cancel the last token on the stack
-            var source = _tokenStack.Pop();
-            source.Cancel();
+            // Cancel the last active token on the stack
+            for (int i = _tokenStack.Count - 1; i >= 0; --i)
+            {
+                // Find the last token that hasn't been cancelled
+                if (_tokenStack[i].IsCancellationRequested == true)
+                {
+                    continue;
+                }
 
-            // We don't want the event to process anymore
-            e.Cancel = true;
+                // Cancel the token from being used
+                _tokenStack[i].Cancel();
+                e.Cancel = true;
+                return;
+            }
         }
 
         /*----------Types----------*/
