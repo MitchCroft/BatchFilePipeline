@@ -1,14 +1,13 @@
-﻿using System.Collections;
-
-using DotNetEnv;
-
-using BatchFilePipelineCLI.Logging;
-using BatchFilePipelineCLI.Utility.Preserve;
+﻿using BatchFilePipelineCLI.Logging;
+using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
-using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.Utility.Disposal;
-using BatchFilePipelineCLI.Pipeline.Nodes;
+using BatchFilePipelineCLI.Utility.ExecutionState;
+using BatchFilePipelineCLI.Utility.Preserve;
+using DotNetEnv;
+using System.Collections;
 
 namespace BatchFilePipelineCLI
 {
@@ -120,6 +119,9 @@ namespace BatchFilePipelineCLI
                                                             IReadOnlyDictionary<string, string> argumentVariables,
                                                             CancellationToken cancellationToken)
         {
+            // Prevent the device from sleeping while processing a pipeline
+            using var marker = ExecutionStateHandler.Push();
+
             // Read in the environment variables that can be used for executing the workflow
             var environmentVariables = LoadEnvironmentVariables();
 
