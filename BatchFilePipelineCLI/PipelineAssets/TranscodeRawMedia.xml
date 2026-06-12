@@ -92,10 +92,10 @@
 					<Collection>{Files}</Collection>
 					<ValueVariableName>Identifier</ValueVariableName>
 					<CancelOnError>False</CancelOnError>
-					<GenerateReport>True</GenerateReport>
 				</Inputs>
 				<Outputs>
 					<LoopSuccessful>ProcessingSuccess</LoopSuccessful>
+					<Report>ProcessReport</Report>
 				</Outputs>
 				<Connections>
 					<!-- If everything goes right, then we can finish off the processing of this collection -->
@@ -122,8 +122,8 @@
 					<From>{SMTP_SENDER}</From>
 					<FromName>{SMTP_SENDER_NAME}</FromName>
 					<To>{NotifReceiver}</To>
-					<Subject>Transcode Raw Media Success={ProcessingSuccess}</Subject>
-					<Body>The running pipeline has finished with a success state of {ProcessingSuccess}</Body>
+					<Subject>[{ProcessReport.ResultCode}] Transcode Raw Media Results</Subject>
+					<Body>{ProcessReport.Report}</Body>
 					<Host>{SMTP_OUTGOING_SERVER}</Host>
 					<Port>{SMTP_OUTGOING_PORT}</Port>
 					<Username>{SMTP_OUTGOING_USERNAME}</Username>

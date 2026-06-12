@@ -1,5 +1,6 @@
 ﻿using BatchFilePipelineCLI.Logging;
 using BatchFilePipelineCLI.Pipeline.Data;
+using BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking.Data;
 using BatchFilePipelineCLI.Pipeline.Runners;
 using BatchFilePipelineCLI.PropertyResolver;
 using BatchFilePipelineCLI.Utility.Cancellation;
@@ -51,13 +52,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
             "Flags if the cancel operation input should only cancel the actively running element being processed instead of the whole loop",
             false
         );
-        private readonly Property _generateReportProperty = Property.Create
-        (
-            "GenerateReport",
-            "Flags if a report of the elements that were processed should be generated while operating for information generating",
-            false
-        );
-
+        
         /*----------Functions----------*/
         //PROTECTED
 
@@ -65,7 +60,7 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
         /// Retrieve the collection of properties that are needed by the child class to process
         /// </summary>
         /// <returns>Retrieve the collection of input properties that can be used by the Node for Processing</returns>
-        protected override IList<Property> GetChildInputProperties() => [_collectionProperty, _indexVariableNameProperty, _valueVariableNameProperty, _cancelOnErrorProperty, _processIndividualCancelProperty, _generateReportProperty];
+        protected override IList<Property> GetChildInputProperties() => [_collectionProperty, _indexVariableNameProperty, _valueVariableNameProperty, _cancelOnErrorProperty, _processIndividualCancelProperty ];
 
         /// <summary>
         /// Handle the process of raising the required logic for the node, with the base elements worked out for processing
@@ -84,23 +79,17 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
             string valueVariableName = context.GetInput<string>(_valueVariableNameProperty);
             bool cancelOnError = context.GetInput<bool>(_cancelOnErrorProperty);
             bool processIndividualCancel = context.GetInput<bool>(_processIndividualCancelProperty);
-            bool generateReport = context.GetInput<bool>(_generateReportProperty);
             Logger.Log($"[{nameof(ForEachNode)}] Linking to GraphId={graphId} Pipeline={pipelineId}");
 
             // If we're creating a report, we will need some elements
-            Stopwatch? timer = null;
-            List<object?>? completedSuccessfully = null;
-            List<object?>? completedFailure = null;
-            int failureCount = 0;
-            if (generateReport == true)
-            {
-                completedSuccessfully = new List<object?>();
-                completedFailure = new List<object?>();
-                timer = Stopwatch.StartNew();
-            }
+            Stopwatch timer = Stopwatch.StartNew();
+            List<object?> completedSuccessfully = new();
+            List<object?> completedFailure = new();
 
             // Iterate over and process all of the elements in the collection
             int index = 0;
+            bool wasCancelled = false;
+            ExecutionResult errorResult = default;
             foreach (var value in collection)
             {
                 // Setup the runtime variables that will be needed for processing the current element
@@ -154,58 +143,66 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
                 // If the root element has been cancelled, kill it
                 if (context.CancellationToken.IsCancellationRequested == true)
                 {
-                    return new ExecutionResult(new TaskCanceledException($"[{nameof(ForEachNode)}] Index={index} Value={value}"));
+                    wasCancelled = true;
+                    break;
                 }
 
                 // If the process failed, then we have a problem
                 if (result.IsError == true)
                 {
-                    ++failureCount;
                     Logger.Error($"[{nameof(ForEachNode)}] Encountered an error while processing '{value}' with the GraphId={graphId} Pipeline={pipelineId}\n{result}");
                     if (cancelOnError == true)
                     {
                         return result;
                     }
-                    completedFailure?.Add(value);
+                    errorResult = result;
+                    completedFailure.Add(value);
                     continue;
                 }
 
                 // Record the results we got for this iteration
-                completedSuccessfully?.Add(value);
+                completedSuccessfully.Add(value);
                 RecordResultValues(result);
             }
 
-            // Check if there's a report we need to output
-            if (generateReport == true)
+            // Output the progress of this node
+            timer.Stop();
+            int total = completedFailure!.Count + completedSuccessfully.Count;
+            Logger.Log($"==================== RUN SUMMARY ====================\n\tGraphId={graphId}\n\tPipeline={pipelineId}\n\tProcessed Count={total}\n\tDuration={timer.Elapsed}\n");
+            if (total == 0)
             {
-                timer!.Stop();
-                int total = completedFailure!.Count + completedSuccessfully!.Count;
-                Logger.Log($"==================== RUN SUMMARY ====================\n\tGraphId={graphId}\n\tPipeline={pipelineId}\n\tProcessed Count={total}\n\tDuration={timer.Elapsed}\n");
-                if (total == 0)
-                {
-                    Logger.Warning("Unable to find any elements to process!");
-                }
-                if (completedSuccessfully.Count > 0)
-                {
-                    float successRate = completedSuccessfully.Count / (float)total;
-                    Logger.Success($"Success {completedSuccessfully.Count}/{total} ({successRate:P})\n\t{string.Join("\n\t", completedSuccessfully)}");
-                }
-                if (completedFailure.Count > 0)
-                {
-                    float failureRate = completedFailure.Count / (float)total;
-                    Logger.Error($"Failed {completedFailure.Count}/{total} ({failureRate:P})\n\t{string.Join("\n\t", completedFailure)}");
-                }
-                Logger.Log($"==================== END SUMMARY ====================");
+                Logger.Warning("Unable to find any elements to process!");
             }
+            if (completedSuccessfully.Count > 0)
+            {
+                float successRate = completedSuccessfully.Count / (float)total;
+                Logger.Success($"Success {completedSuccessfully.Count}/{total} ({successRate:P})\n\t{string.Join("\n\t", completedSuccessfully)}");
+            }
+            if (completedFailure.Count > 0)
+            {
+                float failureRate = completedFailure.Count / (float)total;
+                Logger.Error($"Failed {completedFailure.Count}/{total} ({failureRate:P})\n\t{string.Join("\n\t", completedFailure)}");
+            }
+            Logger.Log($"==================== END SUMMARY ====================");
 
-            // We have a successful flag that we can emit
-            SetResult("LoopSuccessful", failureCount == 0);
+            // We have output elements that need to be set
+            SetResult("LoopSuccessful", completedFailure.Count == 0);
+            SetResult("Report", new BatchProcessSummary
+            (
+                pipelineId,
+                graphId,
+                wasCancelled == true ? -1 : completedFailure.Count == 0 ? 0 : errorResult.ResultCode,
+                wasCancelled == true ? "Cancelled" : completedFailure.Count == 0 ? "Success" : errorResult.DetailMessage,
+                timer.Elapsed,
+                completedSuccessfully.ToArray(),
+                completedFailure.ToArray()
+            ));
 
             // We've got the final result
             return new ExecutionResult
             (
                 new Dictionary<string, object?>(),
-                nextNode: completedFailure?.Count > 0 ? "Failure" : null
+                nextNode: completedFailure.Count > 0 ? "Failure" : null
             );
         }
     }
