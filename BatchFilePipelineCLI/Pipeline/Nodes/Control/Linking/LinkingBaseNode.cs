@@ -140,7 +140,11 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
                 }
 
                 // We have our final results from the Node operation that can be processed
-                return new ExecutionResult(_outputValues!);
+                return new ExecutionResult
+                (
+                    _outputValues!,
+                    nextNode: result.Next
+                );
             }
 
             // Clear the data buffers that are no longer needed
@@ -188,30 +192,54 @@ namespace BatchFilePipelineCLI.Pipeline.Nodes.Control.Linking
             // Store the result values that will be able to be passed back at the end of the processing
             foreach (var (resultKey, resultValue) in result.Results)
             {
-                // See if we have an existing list of result values
-                if (_processingResults.TryGetValue(resultKey, out var resultList) == false)
-                {
-                    _processingResults[resultKey] = resultList = _bufferPool.Rent();
-                }
+                RecordResult(resultKey, resultValue);
+            }
+        }
 
-                // Check how the values should be added to the list of results
-                if (resultValue is not string &&
-                    resultValue is IEnumerable resultEnumerable)
+        /// <summary>
+        /// Add the values of a specific result to the collection of output values
+        /// </summary>
+        /// <param name="key">The key that the result should be stored under</param>
+        /// <param name="value">The value that is to be recorded</param>
+        protected void RecordResult(string key, object? value)
+        {
+            // See if we have an existing list of result values
+            if (_processingResults.TryGetValue(key, out var resultList) == false)
+            {
+                _processingResults[key] = resultList = _bufferPool.Rent();
+            }
+
+            // Check how the values should be added to the list of results
+            if (value is not string &&
+                value is IEnumerable resultEnumerable)
+            {
+                foreach (var resultEnumerableValue in resultEnumerable)
                 {
-                    foreach (var resultEnumerableValue in resultEnumerable)
+                    if (resultEnumerableValue == null)
                     {
-                        if (resultEnumerableValue == null)
-                        {
-                            continue;
-                        }
-                        resultList.Add(resultEnumerableValue);
+                        continue;
                     }
-                }
-                else if (resultValue != null)
-                {
-                    resultList.Add(resultValue);
+                    resultList.Add(resultEnumerableValue);
                 }
             }
+            else if (value != null)
+            {
+                resultList.Add(value);
+            }
+        }
+
+        /// <summary>
+        /// Assign a specific value to override the currently stored under a key
+        /// </summary>
+        /// <param name="key">The key value that is being modified</param>
+        /// <param name="value">The specific value that should be assigned</param>
+        protected void SetResult(string key, object? value)
+        {
+            if (_processingResults.TryGetValue(key, out var resultList) == true)
+            {
+                resultList.Clear();
+            }
+            RecordResult(key, value);
         }
     }
 }

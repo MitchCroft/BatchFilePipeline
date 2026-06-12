@@ -53,6 +53,7 @@
 			<!-- There are some expected values that will be needed to process the functions -->
 			<Required>InputDir</Required>
 			<Required>ExtensionFilter</Required>
+			<Required>NotifReceiver</Required>
 
 			<!-- Process the preparation that is needed to run the graph -->
 			<Node Name="Prepare Pipeline" Id="Main_00" TypeId="RunGraph">
@@ -91,6 +92,42 @@
 					<Collection>{Files}</Collection>
 					<ValueVariableName>Identifier</ValueVariableName>
 					<CancelOnError>False</CancelOnError>
+					<GenerateReport>True</GenerateReport>
+				</Inputs>
+				<Outputs>
+					<LoopSuccessful>ProcessingSuccess</LoopSuccessful>
+				</Outputs>
+				<Connections>
+					<!-- If everything goes right, then we can finish off the processing of this collection -->
+					<Default>Process_03</Default>
+
+					<!-- If something has gone wrong, we want to leave the working directory so we can troubleshoot -->
+					<Failure>Process_04</Failure>
+				</Connections>
+			</Node>
+
+			<!-- Remove the working directory, we don't need the files anymore -->
+			<Node Name="Clean Up Working Directory" Id="Process_03" TypeId="DeleteDirectory">
+				<Inputs>
+					<TargetDir>{WorkingDir}</TargetDir>
+				</Inputs>
+				<Connections>
+					<Default>Process_04</Default>
+				</Connections>
+			</Node>
+
+			<!-- Send a message to the receiver that the process has been completed -->
+			<Node Name="Send Completion Notification" Id="Process_04" TypeId="SendEmail">
+				<Inputs>
+					<From>{SMTP_SENDER}</From>
+					<FromName>{SMTP_SENDER_NAME}</FromName>
+					<To>{NotifReceiver}</To>
+					<Subject>Transcode Raw Media Success={ProcessingSuccess}</Subject>
+					<Body>The running pipeline has finished with a success state of {ProcessingSuccess}</Body>
+					<Host>{SMTP_OUTGOING_SERVER}</Host>
+					<Port>{SMTP_OUTGOING_PORT}</Port>
+					<Username>{SMTP_OUTGOING_USERNAME}</Username>
+					<Password>{SMTP_OUTGOING_PASSWORD}</Password>
 				</Inputs>
 			</Node>
 		</Graph>
