@@ -14,7 +14,7 @@ namespace BatchFilePipelineCLI.Utility
         /// <summary>
         /// Regex pattern that will be used to identify the percentage identifier in a log line
         /// </summary>
-        private static readonly Regex PERCENTAGE_IDENT = new Regex(@"(\d+(?:\.\d+)?)%");
+        private static readonly Regex PERCENTAGE_IDENT = new Regex(@"(\d+(?:\.\d+)?)\s*%");
 
         /*----------Functions----------*/
         //PUBLIC
